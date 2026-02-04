@@ -3,73 +3,62 @@ import google.generativeai as genai
 from duckduckgo_search import DDGS
 from datetime import datetime
 
-# 1. إعدادات الصفحة والواجهة
-st.set_page_config(page_title="Jo Ai - الوكيل الأردني", page_icon="🇯🇴", layout="centered")
+# 1. إعدادات الصفحة
+st.set_page_config(page_title="Jo Ai - النسخة 2.0 الأحدث", page_icon="🚀", layout="centered")
 
-# تصميم الثيم الأردني (CSS)
+# تصميم الواجهة الأنيق
 st.markdown("""
 <style>
     * { direction: rtl; text-align: right; }
-    .stApp { background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); min-height: 100vh; }
-    .stChatMessage { background: rgba(255, 255, 255, 0.9); border-radius: 15px; margin-bottom: 10px; color: black; }
-    .stChatInput { border-radius: 10px; }
+    .stApp { background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%); min-height: 100vh; }
+    .stChatMessage { border-radius: 15px; margin-bottom: 15px; background: rgba(255, 255, 255, 0.1); color: white; }
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown('<div style="text-align:center; color:white;"><h1>🇯🇴 جو آي</h1><p>أهلاً بيك يا نشمي، أنا وكيلك الذكي</p></div>', unsafe_allow_html=True)
+st.markdown('<div style="text-align:center; color:white;"><h1>🚀 جو آي - Gemini 2.0</h1><p>أنت الآن تستخدم أسرع وأحدث ذكاء اصطناعي من قوقل</p></div>', unsafe_allow_html=True)
 
-# 2. إعداد الاتصال بالـ API (استخدام النسخة المضمونة 8b)
+# 2. إعداد محرك Gemini 2.0 Flash
 if "GOOGLE_API_KEY" in st.secrets:
     try:
         genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
-        # تم التعديل هنا لضمان الاستقرار وسرعة الرد
-        model = genai.GenerativeModel('gemini-1.5-flash-8b')
+        # استدعاء النسخة 2.0 التجريبية الأحدث
+        model = genai.GenerativeModel('gemini-2.0-flash-exp')
     except Exception as e:
-        st.error(f"⚠️ خطأ في إعداد الاتصال: {str(e)}")
+        st.error(f"خطأ في تشغيل المحرك الجديد: {str(e)}")
 else:
-    st.warning("⚠️ يرجى إضافة GOOGLE_API_KEY في Secrets")
+    st.warning("⚠️ ضيف المفتاح في Secrets")
 
-# 3. إدارة سجل المحادثة
+# 3. السجل والدردشة
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# عرض الرسائل السابقة
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
 
-# 4. منطقة الإدخال
-user_input = st.chat_input("تفضل اسألني أي شيء يا نشمي...")
+user_input = st.chat_input("سولف مع Gemini 2.0 يا نشمي...")
 
 if user_input:
     with st.chat_message("user"):
         st.markdown(user_input)
     st.session_state.messages.append({"role": "user", "content": user_input})
     
-    with st.spinner("⏳ خليني أشوفلك..."):
+    with st.spinner("⏳ النسخة 2.0 عم بتفكر بذكاء..."):
         try:
-            # محاولة البحث السريع
+            # بحث سريع لدعم الرد
             search_context = ""
             try:
                 with DDGS() as ddgs:
-                    results = [r for r in ddgs.text(user_input, max_results=2)]
-                    search_context = str(results)
+                    search_context = str([r for r in ddgs.text(user_input, max_results=2)])
             except:
-                search_context = "سأجيب من معلوماتي الخاصة."
+                pass
 
-            # طلب الرد
-            prompt = f"أنت Jo Ai، وكيل أردني شهم. رد على: {user_input} بلهجة أردنية أصيلة. معلومات مساعدة: {search_context}"
+            prompt = f"أنت Jo Ai الإصدار 2.0. رد بلهجة أردنية ذكية جداً ومختصرة على: {user_input}. معلومات: {search_context}"
             response = model.generate_content(prompt)
             
-            # عرض الرد
             with st.chat_message("assistant"):
                 st.markdown(response.text)
             st.session_state.messages.append({"role": "assistant", "content": response.text})
             
         except Exception as e:
-            st.error("⚠️ يبدو أن هناك ضغطاً على النظام، حاول مرة أخرى خلال ثوانٍ.")
-            # تسجيل الخطأ في اللوحات الخلفية للمبرمج
-            print(f"Error: {str(e)}")
-
-# الفوتر
-st.markdown(f"<div style='text-align:center; color:white; font-size:10px; margin-top:30px;'>© {datetime.now().year} Jo Ai - صنع للأردن</div>", unsafe_allow_html=True)
+            st.error("⚠️ النسخة 2.0 جديدة جداً، إذا ما ردت انتظر ثواني وجرب مرة ثانية.")
