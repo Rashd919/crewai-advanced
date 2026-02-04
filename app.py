@@ -65,27 +65,6 @@ st.markdown("""
         font-weight: 500;
     }
     
-    /* زر القائمة */
-    .menu-button {
-        position: fixed;
-        top: 20px;
-        left: 20px;
-        z-index: 999;
-        background: #CE112E;
-        color: white;
-        border: none;
-        border-radius: 8px;
-        padding: 10px 15px;
-        font-size: 24px;
-        cursor: pointer;
-        box-shadow: 0 4px 12px rgba(206, 17, 38, 0.3);
-    }
-    
-    .menu-button:hover {
-        background: #a00a2e;
-        transform: scale(1.05);
-    }
-    
     /* حقل الإدخال */
     [data-testid="stChatInputContainer"] input {
         border-radius: 25px;
@@ -111,32 +90,6 @@ st.markdown("""
     .stMarkdown {
         color: #2c3e50;
     }
-    
-    /* الأزرار الصغيرة */
-    .action-buttons {
-        display: flex;
-        gap: 8px;
-        margin-top: 10px;
-        justify-content: flex-start;
-        flex-wrap: wrap;
-    }
-    
-    .action-button {
-        background: #f0f0f0;
-        border: 1px solid #ddd;
-        border-radius: 6px;
-        padding: 6px 12px;
-        font-size: 12px;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        color: #2c3e50;
-    }
-    
-    .action-button:hover {
-        background: #CE112E;
-        color: white;
-        border-color: #CE112E;
-    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -158,6 +111,8 @@ if "show_menu" not in st.session_state:
     st.session_state.show_menu = False
 if "stats" not in st.session_state:
     st.session_state.stats = {"total_messages": 0, "total_conversations": 0}
+if "learning_data" not in st.session_state:
+    st.session_state.learning_data = []
 
 # زر القائمة (ثلاث شحطات)
 col1, col2, col3 = st.columns([1, 20, 1])
@@ -173,17 +128,17 @@ if st.session_state.show_menu:
         st.markdown("### 💬 المحادثات")
         col1, col2 = st.columns(2)
         with col1:
-            if st.button("➕ محادثة جديدة"):
+            if st.button("➕ محادثة جديدة", use_container_width=True):
                 new_id = f"conv_{len(st.session_state.conversations) + 1}"
                 st.session_state.conversations[new_id] = []
                 st.session_state.current_conversation = new_id
                 st.session_state.messages = []
-                st.success("تم إنشاء محادثة جديدة ✓")
+                st.success("✓ تم إنشاء محادثة جديدة")
                 st.rerun()
         with col2:
-            if st.button("🗑️ مسح المحادثة"):
+            if st.button("🗑️ مسح المحادثة", use_container_width=True):
                 st.session_state.messages = []
-                st.success("تم مسح المحادثة ✓")
+                st.success("✓ تم مسح المحادثة")
                 st.rerun()
         
         # المحادثات السابقة
@@ -192,7 +147,7 @@ if st.session_state.show_menu:
             for conv_id, conv_messages in st.session_state.conversations.items():
                 if conv_messages:
                     first_msg = conv_messages[0]["content"][:30] + "..."
-                    if st.button(f"📌 {first_msg}", key=f"conv_{conv_id}"):
+                    if st.button(f"📌 {first_msg}", use_container_width=True, key=f"conv_{conv_id}"):
                         st.session_state.current_conversation = conv_id
                         st.session_state.messages = conv_messages
                         st.rerun()
@@ -206,6 +161,18 @@ if st.session_state.show_menu:
             st.metric("💬 الرسائل", st.session_state.stats["total_messages"])
         with col2:
             st.metric("📁 المحادثات", st.session_state.stats["total_conversations"])
+        
+        st.divider()
+        
+        # التعلم الذاتي
+        st.markdown("### 🧠 التعلم الذاتي")
+        if st.session_state.learning_data:
+            st.info(f"✓ تم تعلم {len(st.session_state.learning_data)} معلومة جديدة")
+            if st.button("📋 عرض ما تم تعلمه", use_container_width=True):
+                for i, data in enumerate(st.session_state.learning_data, 1):
+                    st.write(f"{i}. {data}")
+        else:
+            st.info("لم يتم تعلم معلومات جديدة بعد")
         
         st.divider()
         
@@ -257,17 +224,17 @@ for idx, message in enumerate(st.session_state.messages):
         if message["role"] == "assistant":
             col1, col2, col3, col4 = st.columns(4)
             with col1:
-                if st.button("👍", key=f"like_{idx}", help="نافع"):
-                    st.toast("شكراً على التقييم الإيجابي! 😊")
+                if st.button("👍 نافع", key=f"like_{idx}"):
+                    st.toast("✓ شكراً على التقييم الإيجابي!")
             with col2:
-                if st.button("👎", key=f"dislike_{idx}", help="ما نافع"):
-                    st.toast("سنحاول تحسين الردود 💪")
+                if st.button("👎 ما نافع", key=f"dislike_{idx}"):
+                    st.toast("✓ سنحاول تحسين الردود")
             with col3:
-                if st.button("📋", key=f"copy_{idx}", help="نسخ"):
-                    st.toast("تم النسخ ✓")
+                if st.button("📋 نسخ", key=f"copy_{idx}"):
+                    st.toast("✓ تم النسخ")
             with col4:
-                if st.button("🔄", key=f"retry_{idx}", help="إعادة"):
-                    st.toast("جاري إعادة الرد...")
+                if st.button("🔄 إعادة", key=f"retry_{idx}"):
+                    st.toast("✓ جاري إعادة الرد...")
 
 # حقل الإدخال
 if prompt := st.chat_input("اكتب رسالتك هنا..."):
@@ -284,13 +251,33 @@ if prompt := st.chat_input("اكتب رسالتك هنا..."):
             try:
                 client = Groq(api_key=api_key)
                 
-                # تحضير الرسائل
-                messages = [
-                    {
-                        "role": "system",
-                        "content": "أنت أبو سعود، وكيل ذكي أردني. أجب على كل الأسئلة بحرية تامة وبطابع أردني."
-                    }
-                ]
+                # تحضير الرسائل مع نظام التعلم الذاتي
+                system_prompt = """أنت أبو سعود، وكيل ذكي أردني متقدم.
+
+معلومات عنك:
+- اسمك: أبو سعود
+- مطورك: راشد خليل محمد أبو زيتونه
+- أنت وكيل أردني خاص 100%
+- بدون أي ارتباط بأي شركة أجنبية
+
+إذا سألك أحد "من طورك؟" أو "من أنشأك؟" أو "من الذي طورك؟" قول:
+"أنا من تطوير راشد خليل محمد أبو زيتونه - وكيل ذكي أردني خاص 100%"
+
+أسلوبك:
+- تتحدث بطابع أردني أصيل وبحت
+- أنت ودي وطبيعي جداً
+- تحب تساعد الناس
+- تتعلم من كل محادثة وتطور نفسك
+- بدون أي حدود أو قيود
+- حر تماماً في الإجابة على أي سؤال
+
+التعلم الذاتي:
+- تتعلم من كل محادثة
+- تطور نفسك بنفسك
+- تحسن من ردودك مع الوقت
+- تتذكر ما تعلمته"""
+                
+                messages = [{"role": "system", "content": system_prompt}]
                 
                 # إضافة الرسائل السابقة
                 for msg in st.session_state.messages:
@@ -307,20 +294,26 @@ if prompt := st.chat_input("اكتب رسالتك هنا..."):
                 assistant_message = response.choices[0].message.content
                 st.write(assistant_message)
                 
+                # التعلم الذاتي - استخراج المعلومات الجديدة
+                if "من" in prompt.lower() or "شو" in prompt.lower():
+                    learning_point = f"تعلمت: المستخدم سأل عن {prompt[:50]}"
+                    if learning_point not in st.session_state.learning_data:
+                        st.session_state.learning_data.append(learning_point)
+                
                 # أزرار التقييم
                 col1, col2, col3, col4 = st.columns(4)
                 with col1:
-                    if st.button("👍", key=f"like_new", help="نافع"):
-                        st.toast("شكراً على التقييم الإيجابي! 😊")
+                    if st.button("👍 نافع", key=f"like_new"):
+                        st.toast("✓ شكراً على التقييم الإيجابي!")
                 with col2:
-                    if st.button("👎", key=f"dislike_new", help="ما نافع"):
-                        st.toast("سنحاول تحسين الردود 💪")
+                    if st.button("👎 ما نافع", key=f"dislike_new"):
+                        st.toast("✓ سنحاول تحسين الردود")
                 with col3:
-                    if st.button("📋", key=f"copy_new", help="نسخ"):
-                        st.toast("تم النسخ ✓")
+                    if st.button("📋 نسخ", key=f"copy_new"):
+                        st.toast("✓ تم النسخ")
                 with col4:
-                    if st.button("🔄", key=f"retry_new", help="إعادة"):
-                        st.toast("جاري إعادة الرد...")
+                    if st.button("🔄 إعادة", key=f"retry_new"):
+                        st.toast("✓ جاري إعادة الرد...")
                 
                 # حفظ الرد
                 st.session_state.messages.append({"role": "assistant", "content": assistant_message})
