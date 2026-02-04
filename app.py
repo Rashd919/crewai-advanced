@@ -65,6 +65,14 @@ st.markdown("""
         font-weight: 500;
     }
     
+    .jordanian-header img {
+        width: 80px;
+        height: 80px;
+        margin-bottom: 15px;
+        border-radius: 50%;
+        border: 3px solid white;
+    }
+    
     /* حقل الإدخال */
     [data-testid="stChatInputContainer"] input {
         border-radius: 25px;
@@ -89,6 +97,22 @@ st.markdown("""
     /* النصوص */
     .stMarkdown {
         color: #2c3e50;
+    }
+    
+    /* الأزرار */
+    .stButton > button {
+        background: #CE112E;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-weight: bold;
+        transition: all 0.3s ease;
+    }
+    
+    .stButton > button:hover {
+        background: #a00a2e;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(206, 17, 38, 0.3);
     }
 </style>
 """, unsafe_allow_html=True)
@@ -134,12 +158,10 @@ if st.session_state.show_menu:
                 st.session_state.current_conversation = new_id
                 st.session_state.messages = []
                 st.success("✓ تم إنشاء محادثة جديدة")
-                st.rerun()
         with col2:
             if st.button("🗑️ مسح المحادثة", use_container_width=True):
                 st.session_state.messages = []
                 st.success("✓ تم مسح المحادثة")
-                st.rerun()
         
         # المحادثات السابقة
         if st.session_state.conversations:
@@ -150,7 +172,6 @@ if st.session_state.show_menu:
                     if st.button(f"📌 {first_msg}", use_container_width=True, key=f"conv_{conv_id}"):
                         st.session_state.current_conversation = conv_id
                         st.session_state.messages = conv_messages
-                        st.rerun()
         
         st.divider()
         
@@ -208,9 +229,10 @@ if st.session_state.show_menu:
 © 2026 جميع الحقوق محفوظة
         """)
 
-# الشعار الأردني
+# الشعار الأردني مع الأيقونة
 st.markdown("""
 <div class="jordanian-header">
+    <img src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAAQABADASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8VAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCwAA8A/9k=" alt="أبو سعود">
     <h1>🇯🇴 أبو سعود</h1>
     <p>وكيلك الذكي الأردني</p>
 </div>
