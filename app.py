@@ -5,10 +5,10 @@ import google.generativeai as genai
 st.set_page_config(page_title="جو آي", page_icon="🇯🇴")
 
 # 2. الربط بالمفتاح
-# ملاحظة: تأكد أن الاسم في Secrets هو GOOGLE_API_KEY
 if "GOOGLE_API_KEY" in st.secrets:
     genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
-    model = genai.GenerativeModel('gemini-1.5-flash')
+    # التعديل الجوهري هنا لإنهاء خطأ 404
+    model = genai.GenerativeModel('gemini-1.5-flash-latest')
 else:
     st.error("المفتاح غير موجود في Secrets")
     model = None
@@ -33,6 +33,7 @@ if user_input and model:
     st.session_state.messages.append({"role": "user", "content": user_input})
     
     try:
+        # طلب الرد
         response = model.generate_content(f"أنت Jo Ai. رد بلهجة أردنية: {user_input}")
         with st.chat_message("assistant"):
             st.write(response.text)
