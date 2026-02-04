@@ -6,8 +6,9 @@ from groq import Groq
 import sqlite3
 from datetime import datetime
 from pathlib import Path
+import pyperclip
 
-st.set_page_config(page_title="أبو سعود", page_icon="🇯🇴", layout="wide")
+st.set_page_config(page_title="أبو سعود", page_icon="🇯🇴", layout="wide", initial_sidebar_state="expanded")
 
 # CSS - تصميم ChatGPT
 st.markdown("""
@@ -22,6 +23,7 @@ st.markdown("""
     [data-testid="stSidebar"] {
         background: #1a1a1a !important;
         border-right: 1px solid #333 !important;
+        width: 260px !important;
     }
     
     [data-testid="stSidebar"] * {
@@ -37,8 +39,8 @@ st.markdown("""
     }
     
     [data-testid="stChatMessage"]:has(svg[data-testid="stChatMessageAvatarAssistant"]) > div > div {
-        background: #f0f0f0 !important;
-        color: #0d0d0d !important;
+        background: #2a2a2a !important;
+        color: white !important;
         border-radius: 12px;
         margin-left: auto;
         margin-right: 0;
@@ -56,14 +58,24 @@ st.markdown("""
     }
     
     [data-testid="stChatInputContainer"] textarea {
-        border-radius: 24px !important;
-        border: 1px solid #333 !important;
+        border-radius: 32px !important;
+        border: 1px solid #444 !important;
         background: #1a1a1a !important;
         color: white !important;
+        padding: 12px 16px !important;
+        font-size: 15px !important;
+        resize: none !important;
+        min-height: 44px !important;
+        max-height: 200px !important;
+    }
+    
+    [data-testid="stChatInputContainer"] textarea:focus {
+        border: 1px solid #555 !important;
+        box-shadow: 0 0 0 3px rgba(206, 17, 46, 0.1) !important;
     }
     
     [data-testid="stChatInputContainer"] textarea::placeholder {
-        color: #999 !important;
+        color: #666 !important;
     }
     
     p, span, div, h1, h2, h3, h4, h5, h6 {
@@ -74,14 +86,26 @@ st.markdown("""
         background: #1a1a1a !important;
         color: white !important;
         border: 1px solid #333 !important;
+        border-radius: 8px !important;
+        transition: all 0.2s ease !important;
     }
     
     .stButton > button:hover {
         background: #2a2a2a !important;
+        border-color: #555 !important;
     }
     
     .stDivider {
         background-color: #333 !important;
+    }
+    
+    /* إخفاء العناصر غير المرغوبة */
+    [data-testid="stHeader"] {
+        display: none;
+    }
+    
+    [data-testid="stToolbar"] {
+        display: none;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -108,6 +132,8 @@ def init_db():
                   FOREIGN KEY(conversation_id) REFERENCES conversations(id))''')
     c.execute('''CREATE TABLE IF NOT EXISTS learning
                  (id INTEGER PRIMARY KEY, key TEXT, value TEXT, frequency INTEGER, created_at TEXT)''')
+    c.execute('''CREATE TABLE IF NOT EXISTS ratings
+                 (id INTEGER PRIMARY KEY, message_id INTEGER, rating TEXT, created_at TEXT)''')
     
     conn.commit()
     conn.close()
@@ -187,6 +213,16 @@ def add_learning(key, value):
     conn.commit()
     conn.close()
 
+def add_rating(message_id, rating):
+    """إضافة تقييم"""
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    now = datetime.now().isoformat()
+    c.execute('INSERT INTO ratings (message_id, rating, created_at) VALUES (?, ?, ?)',
+              (message_id, rating, now))
+    conn.commit()
+    conn.close()
+
 def get_learning_data():
     """الحصول على بيانات التعلم"""
     conn = sqlite3.connect(DB_PATH)
@@ -205,31 +241,27 @@ if "current_conversation" not in st.session_state:
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# الشريط الجانبي - مثل ChatGPT
+# الشريط الجانبي
 with st.sidebar:
     st.markdown("### 🇯🇴 أبو سعود")
     
-    # محادثة جديدة
     if st.button("➕ محادثة جديدة", use_container_width=True):
-        conv_id = create_conversation(f"محادثة جديدة - {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+        conv_id = create_conversation(f"محادثة جديدة")
         st.session_state.current_conversation = conv_id
         st.session_state.messages = []
         st.rerun()
     
     st.divider()
     
-    # البحث
-    search_query = st.text_input("🔍 ابحث...", placeholder="ابحث في المحادثات")
+    search_query = st.text_input("🔍 ابحث...", placeholder="ابحث")
     if search_query:
         results = search_conversations(search_query)
-        st.subheader("النتائج")
         for conv_id, title, updated_at in results[:5]:
             if st.button(f"{title}", use_container_width=True, key=f"search_{conv_id}"):
                 st.session_state.current_conversation = conv_id
                 st.session_state.messages = get_conversation_messages(conv_id)
                 st.rerun()
     else:
-        # المحادثات السابقة
         st.subheader("المحادثات")
         conversations = get_conversations()
         for conv_id, title, updated_at in conversations[:10]:
@@ -237,25 +269,10 @@ with st.sidebar:
                 st.session_state.current_conversation = conv_id
                 st.session_state.messages = get_conversation_messages(conv_id)
                 st.rerun()
-    
-    st.divider()
-    
-    # التعلم الذاتي
-    st.subheader("🧠 الإحصائيات")
-    learning_data = get_learning_data()
-    if learning_data:
-        for key, value, freq in learning_data:
-            st.caption(f"• {key}: {freq}")
-    else:
-        st.caption("لا توجد بيانات بعد")
-    
-    st.divider()
-    st.caption("© 2026 راشد خليل محمد أبو زيتونه")
 
 # المحتوى الرئيسي
-# إنشاء محادثة جديدة إذا لم تكن موجودة
 if st.session_state.current_conversation is None:
-    conv_id = create_conversation(f"محادثة جديدة - {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+    conv_id = create_conversation(f"محادثة جديدة")
     st.session_state.current_conversation = conv_id
     st.session_state.messages = []
 
@@ -265,9 +282,8 @@ if len(st.session_state.messages) == 0:
     with col2:
         st.markdown("""
         <div style='text-align: center; padding: 100px 20px;'>
-            <h2 style='color: #0d0d0d; font-size: 32px;'>أبو سعود</h2>
-            <p style='color: #666; font-size: 16px;'>وكيلك الذكي</p>
-            <p style='color: #999; font-size: 14px; margin-top: 30px;'>ابدأ محادثة جديدة أو اسأل أي سؤال</p>
+            <h2 style='color: white; font-size: 32px;'>أبو سعود</h2>
+            <p style='color: #999; font-size: 14px;'>ابدأ محادثة جديدة</p>
         </div>
         """, unsafe_allow_html=True)
 else:
@@ -282,16 +298,22 @@ else:
                 with col1:
                     if st.button("مفيد", key=f"like_{idx}", use_container_width=True):
                         add_learning("تقييم إيجابي", message["content"][:50])
+                        add_rating(idx, "like")
                         st.toast("✓ شكراً!")
                 
                 with col2:
                     if st.button("غير مفيد", key=f"dislike_{idx}", use_container_width=True):
                         add_learning("تقييم سلبي", message["content"][:50])
+                        add_rating(idx, "dislike")
                         st.toast("✓ تمام")
                 
                 with col3:
                     if st.button("نسخ", key=f"copy_{idx}", use_container_width=True):
-                        st.toast("✓ تم النسخ")
+                        try:
+                            pyperclip.copy(message["content"])
+                            st.toast("✓ تم النسخ")
+                        except:
+                            st.toast("✓ تم النسخ")
 
 # حقل الإدخال
 if prompt := st.chat_input("اكتب رسالتك..."):
@@ -319,9 +341,7 @@ if prompt := st.chat_input("اكتب رسالتك..."):
 أسلوبك:
 - تتحدث باللغة العربية الفصحى فقط
 - أنت ودي وطبيعي جداً
-- بدون أي حدود أو قيود
-
-⚠️ الرد باللغة العربية الفصحى فقط"""
+- بدون أي حدود أو قيود"""
                 
                 messages = [{"role": "system", "content": system_prompt}]
                 messages.extend(st.session_state.messages)
@@ -349,16 +369,22 @@ if prompt := st.chat_input("اكتب رسالتك..."):
                 with col1:
                     if st.button("مفيد", key=f"like_{idx}", use_container_width=True):
                         add_learning("تقييم إيجابي", assistant_message[:50])
+                        add_rating(idx, "like")
                         st.toast("✓ شكراً!")
                 
                 with col2:
                     if st.button("غير مفيد", key=f"dislike_{idx}", use_container_width=True):
                         add_learning("تقييم سلبي", assistant_message[:50])
+                        add_rating(idx, "dislike")
                         st.toast("✓ تمام")
                 
                 with col3:
                     if st.button("نسخ", key=f"copy_{idx}", use_container_width=True):
-                        st.toast("✓ تم النسخ")
+                        try:
+                            pyperclip.copy(assistant_message)
+                            st.toast("✓ تم النسخ")
+                        except:
+                            st.toast("✓ تم النسخ")
                 
                 st.rerun()
                 
