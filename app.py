@@ -3,11 +3,11 @@
 
 """
 🇯🇴 Jo Ai - محادثة ذكية أردنية
-تطبيق ذكي بطابع أردني احترافي مع Google Gemini API
+تطبيق ذكي بطابع أردني احترافي مع Groq API
 """
 
 import streamlit as st
-from google import genai
+from groq import Groq
 from datetime import datetime
 
 # إعدادات الصفحة
@@ -166,37 +166,43 @@ st.markdown("""
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# دالة للحصول على رد ذكي من Google Gemini
+# دالة للحصول على رد ذكي من Groq
 def get_ai_response(user_message, api_key):
-    """الحصول على رد ذكي من Google Gemini API"""
+    """الحصول على رد ذكي من Groq API"""
     try:
         # تكوين العميل
-        client = genai.Client(api_key=api_key)
+        client = Groq(api_key=api_key)
         
         # تحضير سجل المحادثة
-        messages = []
+        messages = [
+            {
+                "role": "system",
+                "content": "أنت Jo Ai، وكيل ذكي أردني احترافي. تتحدث باللغة العربية بطابع أردني أصيل وودي. كن مفيداً وساعد المستخدم بأفضل طريقة ممكنة. الرد يجب أن يكون سلساً وطبيعياً وذكياً."
+            }
+        ]
         
         # إضافة الرسائل السابقة (آخر 10 رسائل)
         for msg in st.session_state.messages[-10:]:
             messages.append({
                 "role": msg["role"],
-                "parts": [{"text": msg["content"]}]
+                "content": msg["content"]
             })
         
         # إضافة الرسالة الحالية
         messages.append({
             "role": "user",
-            "parts": [{"text": user_message}]
+            "content": user_message
         })
         
-        # إرسال الطلب
-        response = client.models.generate_content(
-            model="gemini-2.0-flash",
-            contents=messages,
-            system_instruction="أنت Jo Ai، وكيل ذكي أردني احترافي. تتحدث باللغة العربية بطابع أردني أصيل وودي. كن مفيداً وساعد المستخدم بأفضل طريقة ممكنة. الرد يجب أن يكون سلساً وطبيعياً."
+        # إرسال الطلب إلى Groq
+        response = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=messages,
+            temperature=0.7,
+            max_tokens=2000
         )
         
-        return response.text
+        return response.choices[0].message.content
     
     except Exception as e:
         return f"❌ خطأ: {str(e)}"
@@ -258,10 +264,10 @@ st.markdown('</div>', unsafe_allow_html=True)
 # معالجة الرسالة
 if send_button and user_input.strip():
     # الحصول على مفتاح API
-    api_key = st.secrets.get("GOOGLE_API_KEY", "")
+    api_key = st.secrets.get("GROQ_API_KEY", "")
     
     if not api_key:
-        st.error("❌ خطأ: مفتاح Google API غير موجود. يرجى إضافة المفتاح في Streamlit Secrets.")
+        st.error("❌ خطأ: مفتاح Groq API غير موجود. يرجى إضافة المفتاح في Streamlit Secrets.")
     else:
         # إضافة رسالة المستخدم
         st.session_state.messages.append({
@@ -271,12 +277,12 @@ if send_button and user_input.strip():
         
         # عرض رسالة التحميل
         with st.spinner("⏳ جاري الرد..."):
-            # الحصول على رد من Gemini
+            # الحصول على رد من Groq
             response = get_ai_response(user_input, api_key)
             
             # إضافة رد الوكيل
             st.session_state.messages.append({
-                "role": "model",
+                "role": "assistant",
                 "content": response
             })
         
