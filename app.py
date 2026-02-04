@@ -264,11 +264,13 @@ st.markdown('</div>', unsafe_allow_html=True)
 # معالجة الرسالة
 if send_button and user_input.strip():
     # الحصول على مفتاح API
-    api_key = st.secrets.get("GROQ_API_KEY", "")
-    
-    if not api_key:
+    try:
+        api_key = st.secrets["GROQ_API_KEY"]
+    except:
         st.error("❌ خطأ: مفتاح Groq API غير موجود. يرجى إضافة المفتاح في Streamlit Secrets.")
-    else:
+        api_key = None
+    
+    if api_key and api_key.strip():
         # إضافة رسالة المستخدم
         st.session_state.messages.append({
             "role": "user",
