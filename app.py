@@ -4,7 +4,35 @@
 import streamlit as st
 from groq import Groq
 
-st.set_page_config(page_title="أبو سعود", page_icon="🇯🇴", layout="centered")
+st.set_page_config(page_title="أبو سعود", page_icon="🇯🇴", layout="wide")
+
+# CSS بسيط
+st.markdown("""
+<style>
+    * { direction: rtl; }
+    body { background: white; }
+    
+    /* رسائل المستخدم - أحمر */
+    [data-testid="stChatMessage"]:has(svg[data-testid="stChatMessageAvatarUser"]) {
+        background: white;
+    }
+    [data-testid="stChatMessage"]:has(svg[data-testid="stChatMessageAvatarUser"]) > div > div {
+        background: #CE112E !important;
+        color: white !important;
+        border-radius: 12px;
+    }
+    
+    /* رسائل الوكيل - رمادي */
+    [data-testid="stChatMessage"]:has(svg[data-testid="stChatMessageAvatarAssistant"]) {
+        background: white;
+    }
+    [data-testid="stChatMessage"]:has(svg[data-testid="stChatMessageAvatarAssistant"]) > div > div {
+        background: #f0f0f0 !important;
+        color: black !important;
+        border-radius: 12px;
+    }
+</style>
+""", unsafe_allow_html=True)
 
 # الحصول على API key
 try:
@@ -18,23 +46,47 @@ if "messages" not in st.session_state:
     st.session_state.messages = []
 
 # الرأس
-st.title("🇯🇴 أبو سعود")
-st.caption("وكيلك الذكي الأردني")
+col1, col2, col3 = st.columns([1, 2, 1])
+with col2:
+    st.markdown("<h1 style='text-align: center;'>🇯🇴 أبو سعود</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; color: #666;'>وكيلك الذكي الأردني</p>", unsafe_allow_html=True)
+
+st.divider()
+
+# رسالة ترحيب
+if len(st.session_state.messages) == 0:
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        st.markdown("""
+        <div style='text-align: center; padding: 60px 20px;'>
+            <p style='color: #999; font-size: 16px;'>ابدأ محادثة جديدة أو اسأل أي سؤال</p>
+        </div>
+        """, unsafe_allow_html=True)
 
 # عرض الرسائل
-for message in st.session_state.messages:
+for idx, message in enumerate(st.session_state.messages):
     with st.chat_message(message["role"]):
         st.write(message["content"])
+        
+        # أدوات الرد
+        if message["role"] == "assistant":
+            col1, col2, col3, col4, col5 = st.columns([1, 1, 1, 1, 10])
+            with col1:
+                st.button("👍", key=f"like_{idx}", help="نافع")
+            with col2:
+                st.button("👎", key=f"dislike_{idx}", help="ما نافع")
+            with col3:
+                st.button("📋", key=f"copy_{idx}", help="نسخ")
+            with col4:
+                st.button("🔁", key=f"retry_{idx}", help="إعادة")
 
 # حقل الإدخال
 if prompt := st.chat_input("اكتب رسالتك..."):
-    # إضافة رسالة المستخدم
     st.session_state.messages.append({"role": "user", "content": prompt})
     
     with st.chat_message("user"):
         st.write(prompt)
     
-    # الحصول على الرد
     with st.chat_message("assistant"):
         with st.spinner("جاري الرد..."):
             try:
@@ -72,12 +124,25 @@ if prompt := st.chat_input("اكتب رسالتك..."):
                 
                 st.session_state.messages.append({"role": "assistant", "content": assistant_message})
                 
+                # أدوات الرد
+                col1, col2, col3, col4, col5 = st.columns([1, 1, 1, 1, 10])
+                with col1:
+                    st.button("👍", key="like_new", help="نافع")
+                with col2:
+                    st.button("👎", key="dislike_new", help="ما نافع")
+                with col3:
+                    st.button("📋", key="copy_new", help="نسخ")
+                with col4:
+                    st.button("🔁", key="retry_new", help="إعادة")
+                
+                st.rerun()
+                
             except Exception as e:
                 st.error(f"❌ خطأ: {str(e)}")
 
 # زر مسح
 st.divider()
-if st.button("🗑️ مسح المحادثة"):
+if st.button("🗑️ مسح المحادثة", use_container_width=True):
     st.session_state.messages = []
     st.rerun()
 
