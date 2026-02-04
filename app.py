@@ -7,8 +7,8 @@ st.set_page_config(page_title="جو آي", page_icon="🇯🇴")
 # 2. الربط بالمفتاح
 if "GOOGLE_API_KEY" in st.secrets:
     genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
-    # هذا هو الاسم الصحيح والمضمون للنسخة المستقرة
-    model = genai.GenerativeModel('gemini-1.5-flash-latest')
+    # هذا هو الاسم الرسمي والمضمون لنسخة فلاش
+    model = genai.GenerativeModel('gemini-1.5-flash')
 else:
     st.error("المفتاح غير موجود في Secrets")
     model = None
@@ -33,11 +33,11 @@ if user_input and model:
     st.session_state.messages.append({"role": "user", "content": user_input})
     
     try:
-        # طلب الرد بلهجة أردنية
+        # طلب الرد من الموديل
         response = model.generate_content(f"أنت جو آي، رد بلهجة أردنية: {user_input}")
         with st.chat_message("assistant"):
             st.write(response.text)
         st.session_state.messages.append({"role": "assistant", "content": response.text})
     except Exception as e:
-        # إذا طلع خطأ، رح يورجيك شو هو بالظبط عشان نحله
-        st.error(f"يا نشمي فيه تعليق: {str(e)}")
+        # إذا صار خطأ رح يطبع نوعه بالظبط عشان نعرف نحله
+        st.error(f"يا نشمي فيه تعليق بسيط: {str(e)}")
