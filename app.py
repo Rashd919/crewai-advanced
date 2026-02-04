@@ -13,7 +13,7 @@ import random
 # إعدادات الصفحة
 st.set_page_config(
     page_title="Jo Ai",
-    page_icon="🤖",
+    page_icon="🇯🇴",
     layout="centered",
     initial_sidebar_state="collapsed"
 )
@@ -161,7 +161,7 @@ st.markdown("""
 # رأس الصفحة
 st.markdown("""
 <div class="header-container">
-    <h1>🤖 Jo Ai</h1>
+    <h1>🇯🇴 Jo Ai</h1>
     <p>وكيل ذكي أردني احترافي</p>
 </div>
 """, unsafe_allow_html=True)
