@@ -3,12 +3,11 @@
 
 """
 🇯🇴 Jo Ai - محادثة ذكية أردنية
-تطبيق ذكي بطابع أردني احترافي مع OpenAI API
+تطبيق ذكي بطابع أردني احترافي مع Google Gemini API
 """
 
 import streamlit as st
-import requests
-import json
+from google import genai
 from datetime import datetime
 
 # إعدادات الصفحة
@@ -167,54 +166,37 @@ st.markdown("""
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# دالة للحصول على رد ذكي من OpenAI
+# دالة للحصول على رد ذكي من Google Gemini
 def get_ai_response(user_message, api_key):
-    """الحصول على رد ذكي من OpenAI API"""
+    """الحصول على رد ذكي من Google Gemini API"""
     try:
-        headers = {
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json"
-        }
+        # تكوين العميل
+        client = genai.Client(api_key=api_key)
         
-        # تحضير الرسائل
-        messages = [
-            {
-                "role": "system",
-                "content": "أنت Jo Ai، وكيل ذكي أردني احترافي. تتحدث باللغة العربية بطابع أردني أصيل وودي. كن مفيداً وساعد المستخدم بأفضل طريقة ممكنة. الرد يجب أن يكون سلساً وطبيعياً."
-            }
-        ]
+        # تحضير سجل المحادثة
+        messages = []
         
-        # إضافة سجل المحادثة
-        for msg in st.session_state.messages[-10:]:  # آخر 10 رسائل فقط
+        # إضافة الرسائل السابقة (آخر 10 رسائل)
+        for msg in st.session_state.messages[-10:]:
             messages.append({
                 "role": msg["role"],
-                "content": msg["content"]
+                "parts": [{"text": msg["content"]}]
             })
         
         # إضافة الرسالة الحالية
         messages.append({
             "role": "user",
-            "content": user_message
+            "parts": [{"text": user_message}]
         })
         
-        # استدعاء OpenAI API
-        response = requests.post(
-            "https://api.openai.com/v1/chat/completions",
-            headers=headers,
-            json={
-                "model": "gpt-3.5-turbo",
-                "messages": messages,
-                "temperature": 0.7,
-                "max_tokens": 2000
-            },
-            timeout=30
+        # إرسال الطلب
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=messages,
+            system_instruction="أنت Jo Ai، وكيل ذكي أردني احترافي. تتحدث باللغة العربية بطابع أردني أصيل وودي. كن مفيداً وساعد المستخدم بأفضل طريقة ممكنة. الرد يجب أن يكون سلساً وطبيعياً."
         )
         
-        if response.status_code == 200:
-            data = response.json()
-            return data["choices"][0]["message"]["content"]
-        else:
-            return f"❌ خطأ من API: {response.status_code} - {response.text}"
+        return response.text
     
     except Exception as e:
         return f"❌ خطأ: {str(e)}"
@@ -276,10 +258,10 @@ st.markdown('</div>', unsafe_allow_html=True)
 # معالجة الرسالة
 if send_button and user_input.strip():
     # الحصول على مفتاح API
-    api_key = st.secrets.get("OPENAI_API_KEY", "")
+    api_key = st.secrets.get("GOOGLE_API_KEY", "")
     
     if not api_key:
-        st.error("❌ خطأ: مفتاح OpenAI API غير موجود. يرجى إضافة المفتاح في Streamlit Secrets.")
+        st.error("❌ خطأ: مفتاح Google API غير موجود. يرجى إضافة المفتاح في Streamlit Secrets.")
     else:
         # إضافة رسالة المستخدم
         st.session_state.messages.append({
@@ -289,12 +271,12 @@ if send_button and user_input.strip():
         
         # عرض رسالة التحميل
         with st.spinner("⏳ جاري الرد..."):
-            # الحصول على رد من OpenAI
+            # الحصول على رد من Gemini
             response = get_ai_response(user_input, api_key)
             
             # إضافة رد الوكيل
             st.session_state.messages.append({
-                "role": "assistant",
+                "role": "model",
                 "content": response
             })
         
