@@ -5,7 +5,6 @@ import streamlit as st
 from groq import Groq
 import json
 from datetime import datetime
-import pyperclip
 
 st.set_page_config(
     page_title="أبو سعود",
