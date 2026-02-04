@@ -1,12 +1,13 @@
 """
-🎨 واجهة Streamlit المبسطة - CrewAI Advanced
-نسخة محسّنة وسريعة للعمل على Streamlit Cloud
+🎨 واجهة Streamlit الحديثة
+نظام CrewAI المتقدم - واجهة احترافية
 """
 
 import streamlit as st
+from crew import execute_query, execute_research, execute_analysis, execute_full
+from dotenv import load_dotenv
 import os
 from datetime import datetime
-from dotenv import load_dotenv
 
 # تحميل متغيرات البيئة
 load_dotenv()
@@ -27,10 +28,12 @@ st.markdown("""
         text-align: right;
     }
     
+    /* الخلفية الرئيسية */
     .stApp {
         background: linear-gradient(135deg, #0f0f1e 0%, #1a1a3e 50%, #0f3460 100%);
     }
     
+    /* العنوان الرئيسي */
     .main-header {
         text-align: center;
         padding: 40px 20px;
@@ -54,6 +57,7 @@ st.markdown("""
         margin: 12px 0 0 0;
     }
     
+    /* صناديق المعلومات */
     .info-box {
         background: rgba(0, 212, 255, 0.1);
         border: 2px solid #00d4ff;
@@ -63,6 +67,7 @@ st.markdown("""
         backdrop-filter: blur(10px);
     }
     
+    /* الأزرار */
     .stButton > button {
         background: linear-gradient(135deg, #00d4ff 0%, #0099cc 100%);
         color: white;
@@ -81,6 +86,7 @@ st.markdown("""
         background: linear-gradient(135deg, #00ff88 0%, #00cc66 100%);
     }
     
+    /* حقول الإدخال */
     .stTextInput > div > div > input,
     .stTextArea > div > div > textarea {
         border-radius: 15px;
@@ -96,6 +102,7 @@ st.markdown("""
         box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
     }
     
+    /* الفاصل */
     hr {
         border: none;
         height: 2px;
@@ -103,6 +110,7 @@ st.markdown("""
         margin: 25px 0;
     }
     
+    /* نتائج البحث */
     .result-box {
         background: rgba(45, 53, 97, 0.3);
         border-radius: 15px;
@@ -126,6 +134,7 @@ st.markdown("""
 with st.sidebar:
     st.markdown("## ⚙️ الإعدادات")
     
+    # معلومات النظام
     st.markdown("""
     ### 🎯 معلومات النظام
     - **الإصدار:** 1.0.0
@@ -135,6 +144,15 @@ with st.sidebar:
     
     st.divider()
     
+    # نوع المهمة
+    task_type = st.selectbox(
+        "اختر نوع المهمة:",
+        ["🔍 بحث متقدم", "📊 تحليل", "🎯 خط أنابيب كامل"]
+    )
+    
+    st.divider()
+    
+    # معلومات الوكلاء
     st.markdown("""
     ### 👥 الوكلاء الذكيين
     
@@ -176,16 +194,17 @@ with tab1:
         search_button = st.button("🔍 بحث", use_container_width=True)
     
     if search_button and query:
-        st.info("""
-        ℹ️ **ملاحظة:** نظام البحث المتقدم قيد التطوير.
-        
-        سيتم البحث عن: **{}**
-        
-        الميزات المتاحة:
-        - 🌐 البحث في الويب
-        - 🎥 فيديوهات YouTube
-        - 📄 استخراج محتوى الصفحات
-        """.format(query))
+        with st.spinner("⏳ جاري البحث..."):
+            try:
+                results = execute_research(query)
+                st.markdown("""
+                <div class="result-box">
+                """ + results + """
+                </div>
+                """, unsafe_allow_html=True)
+                st.success("✅ تم البحث بنجاح!")
+            except Exception as e:
+                st.error(f"❌ خطأ: {str(e)}")
 
 with tab2:
     st.markdown("### التحليل المتقدم")
@@ -199,13 +218,17 @@ with tab2:
     
     if st.button("📊 تحليل", use_container_width=True):
         if research_input:
-            st.info("""
-            ℹ️ **ملاحظة:** نظام التحليل قيد التطوير.
-            
-            سيتم تحليل المحتوى التالي:
-            
-            {}
-            """.format(research_input[:200]))
+            with st.spinner("⏳ جاري التحليل..."):
+                try:
+                    results = execute_analysis(research_input)
+                    st.markdown("""
+                    <div class="result-box">
+                    """ + results + """
+                    </div>
+                    """, unsafe_allow_html=True)
+                    st.success("✅ تم التحليل بنجاح!")
+                except Exception as e:
+                    st.error(f"❌ خطأ: {str(e)}")
         else:
             st.warning("⚠️ يرجى إدخال نتائج البحث أولاً")
 
@@ -227,61 +250,48 @@ with tab3:
     
     if st.button("🎯 تنفيذ خط أنابيب", use_container_width=True):
         if full_query:
-            st.success("""
-            ✅ **تم استقبال الطلب بنجاح!**
-            
-            الاستعلام: **{}**
-            
-            جاري المعالجة...
-            """.format(full_query))
-            
-            # عرض خطوات المعالجة
-            with st.spinner("⏳ جاري البحث..."):
-                st.info("🔍 البحث عن المعلومات...")
-            
-            with st.spinner("⏳ جاري التحليل..."):
-                st.info("📊 تحليل النتائج...")
-            
-            with st.spinner("⏳ جاري التنسيق..."):
-                st.info("📋 إعداد التقرير النهائي...")
-            
-            st.success("✅ تمت المعالجة بنجاح!")
+            with st.spinner("⏳ جاري المعالجة (قد يستغرق وقتاً)..."):
+                try:
+                    results = execute_full(full_query)
+                    
+                    # عرض النتائج
+                    col1, col2, col3 = st.columns(3)
+                    
+                    with col1:
+                        st.markdown("#### 🔍 البحث")
+                        if results["research"]:
+                            st.text(results["research"][:300] + "...")
+                    
+                    with col2:
+                        st.markdown("#### 📊 التحليل")
+                        if results["analysis"]:
+                            st.text(results["analysis"][:300] + "...")
+                    
+                    with col3:
+                        st.markdown("#### 📋 النتيجة النهائية")
+                        if results["final_result"]:
+                            st.text(results["final_result"][:300] + "...")
+                    
+                    st.divider()
+                    
+                    # عرض النتائج الكاملة
+                    st.markdown("### 📄 النتائج الكاملة")
+                    
+                    with st.expander("🔍 نتائج البحث"):
+                        st.write(results["research"])
+                    
+                    with st.expander("📊 نتائج التحليل"):
+                        st.write(results["analysis"])
+                    
+                    with st.expander("📋 النتيجة النهائية"):
+                        st.write(results["final_result"])
+                    
+                    st.success("✅ تم المعالجة بنجاح!")
+                    
+                except Exception as e:
+                    st.error(f"❌ خطأ: {str(e)}")
         else:
             st.warning("⚠️ يرجى إدخال استعلام أولاً")
-
-# قسم المعلومات
-st.divider()
-
-st.markdown("""
-### 📚 كيفية الاستخدام
-
-**1. البحث المتقدم:**
-- أدخل موضوع البحث
-- سيقوم الباحث الخارق بالبحث في الويب وجلب فيديوهات YouTube
-
-**2. التحليل:**
-- أدخل نتائج البحث
-- سيقوم المحلل التقني بتحليل البيانات وصياغة الإجابة
-
-**3. خط الأنابيب الكامل:**
-- أدخل الاستعلام
-- سيتم تنفيذ جميع المراحل تلقائياً
-
-### 🔧 الأدوات المتاحة
-
-- 🌐 **البحث في الويب** - DuckDuckGo
-- 🎥 **فيديوهات YouTube** - YouTube Search
-- 📄 **استخراج المحتوى** - BeautifulSoup
-- 📊 **التحليل** - Advanced Analysis
-- ✍️ **الصياغة** - Professional Formatting
-
-### ⚙️ الإعدادات المتقدمة
-
-- ✅ `allow_delegation=True` - السماح بتفويض المهام
-- ✅ `verbose=True` - عرض تفاصيل العملية
-- ✅ `allow_code_execution=True` - تنفيذ الأكواس
-
-""")
 
 # الفوتر
 st.divider()
@@ -289,10 +299,5 @@ st.markdown("""
 <div style='text-align: center; padding: 25px; color: #666; font-size: 0.9em;'>
     <p>© 2026 CrewAI Advanced - جميع الحقوق محفوظة</p>
     <p style='margin-top: 8px;'>نظام ذكي متقدم للبحث والتحليل</p>
-    <p style='margin-top: 8px; font-size: 0.8em;'>
-        <a href="https://github.com/Rashd919/crewai-advanced" style="color: #00d4ff;">GitHub</a> | 
-        <a href="https://streamlit.io" style="color: #00d4ff;">Streamlit</a> | 
-        <a href="https://crewai.io" style="color: #00d4ff;">CrewAI</a>
-    </p>
 </div>
 """, unsafe_allow_html=True)
