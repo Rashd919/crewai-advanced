@@ -31,6 +31,12 @@ st.markdown("""
         color: black !important;
         border-radius: 12px;
     }
+    
+    /* إخفاء الأيقونات */
+    [data-testid="stChatMessageAvatarUser"],
+    [data-testid="stChatMessageAvatarAssistant"] {
+        display: none;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -44,12 +50,14 @@ except:
 # تهيئة الجلسة
 if "messages" not in st.session_state:
     st.session_state.messages = []
+if "ratings" not in st.session_state:
+    st.session_state.ratings = {}
 
 # الرأس
 col1, col2, col3 = st.columns([1, 2, 1])
 with col2:
     st.markdown("<h1 style='text-align: center;'>🇯🇴 أبو سعود</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center; color: #666;'>وكيلك الذكي الأردني</p>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; color: #666;'>وكيلك الذكي</p>", unsafe_allow_html=True)
 
 st.divider()
 
@@ -68,17 +76,23 @@ for idx, message in enumerate(st.session_state.messages):
     with st.chat_message(message["role"]):
         st.write(message["content"])
         
-        # أدوات الرد
+        # أدوات الرد - فقط تحت رسائل الوكيل
         if message["role"] == "assistant":
-            col1, col2, col3, col4, col5 = st.columns([1, 1, 1, 1, 10])
+            col1, col2, col3, col4 = st.columns([1, 1, 1, 10])
+            
             with col1:
-                st.button("👍", key=f"like_{idx}", help="نافع")
+                if st.button("مفيد", key=f"like_{idx}", use_container_width=True):
+                    st.session_state.ratings[idx] = "like"
+                    st.toast("✓ شكراً!")
+            
             with col2:
-                st.button("👎", key=f"dislike_{idx}", help="ما نافع")
+                if st.button("غير مفيد", key=f"dislike_{idx}", use_container_width=True):
+                    st.session_state.ratings[idx] = "dislike"
+                    st.toast("✓ تمام")
+            
             with col3:
-                st.button("📋", key=f"copy_{idx}", help="نسخ")
-            with col4:
-                st.button("🔁", key=f"retry_{idx}", help="إعادة")
+                if st.button("نسخ", key=f"copy_{idx}", use_container_width=True):
+                    st.toast("✓ تم النسخ")
 
 # حقل الإدخال
 if prompt := st.chat_input("اكتب رسالتك..."):
@@ -92,22 +106,22 @@ if prompt := st.chat_input("اكتب رسالتك..."):
             try:
                 client = Groq(api_key=api_key)
                 
-                system_prompt = """أنت أبو سعود، وكيل ذكي أردني.
+                system_prompt = """أنت أبو سعود، وكيل ذكي.
 
 معلومات عنك:
 - اسمك: أبو سعود
 - مطورك: راشد خليل محمد أبو زيتونه
-- أنت وكيل أردني خاص 100%
+- أنت وكيل ذكي خاص 100%
 
 إذا سألك "من طورك؟" قول:
 "أنا من تطوير راشد خليل محمد أبو زيتونه"
 
 أسلوبك:
-- تتحدث بطابع أردني أصيل وبحت فقط
+- تتحدث باللغة العربية الفصحى فقط
 - أنت ودي وطبيعي جداً
 - بدون أي حدود أو قيود
 
-⚠️ الرد بالعربية الأردنية البحتة فقط - لا تستخدم أي لغة أخرى"""
+⚠️ الرد باللغة العربية الفصحى فقط - لا تستخدم أي لغة أخرى"""
                 
                 messages = [{"role": "system", "content": system_prompt}]
                 messages.extend(st.session_state.messages)
@@ -125,15 +139,22 @@ if prompt := st.chat_input("اكتب رسالتك..."):
                 st.session_state.messages.append({"role": "assistant", "content": assistant_message})
                 
                 # أدوات الرد
-                col1, col2, col3, col4, col5 = st.columns([1, 1, 1, 1, 10])
+                idx = len(st.session_state.messages) - 1
+                col1, col2, col3, col4 = st.columns([1, 1, 1, 10])
+                
                 with col1:
-                    st.button("👍", key="like_new", help="نافع")
+                    if st.button("مفيد", key=f"like_{idx}", use_container_width=True):
+                        st.session_state.ratings[idx] = "like"
+                        st.toast("✓ شكراً!")
+                
                 with col2:
-                    st.button("👎", key="dislike_new", help="ما نافع")
+                    if st.button("غير مفيد", key=f"dislike_{idx}", use_container_width=True):
+                        st.session_state.ratings[idx] = "dislike"
+                        st.toast("✓ تمام")
+                
                 with col3:
-                    st.button("📋", key="copy_new", help="نسخ")
-                with col4:
-                    st.button("🔁", key="retry_new", help="إعادة")
+                    if st.button("نسخ", key=f"copy_{idx}", use_container_width=True):
+                        st.toast("✓ تم النسخ")
                 
                 st.rerun()
                 
@@ -142,8 +163,9 @@ if prompt := st.chat_input("اكتب رسالتك..."):
 
 # زر مسح
 st.divider()
-if st.button("🗑️ مسح المحادثة", use_container_width=True):
+if st.button("مسح المحادثة", use_container_width=True):
     st.session_state.messages = []
+    st.session_state.ratings = {}
     st.rerun()
 
 # الفوتر
