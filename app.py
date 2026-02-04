@@ -50,24 +50,26 @@ st.markdown("""
     }
     
     [data-testid="stChatMessage"]:has(svg[data-testid="stChatMessageAvatarUser"]) > div {
-        background: #e7f3ff;
+        background: #CE112E;
         border-radius: 18px;
         padding: 12px 16px;
         margin-right: auto;
         margin-left: 0;
         max-width: 70%;
         width: fit-content;
+        color: white;
     }
     
     /* رسائل الوكيل */
     [data-testid="stChatMessage"]:has(svg[data-testid="stChatMessageAvatarAssistant"]) > div {
-        background: #f7f7f7;
+        background: #e8e8e8;
         border-radius: 18px;
         padding: 12px 16px;
         margin-left: auto;
         margin-right: 0;
         max-width: 70%;
         width: fit-content;
+        color: #0d0d0d;
     }
     
     /* صندوق الإدخال */
