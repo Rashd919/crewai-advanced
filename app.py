@@ -7,7 +7,8 @@
 """
 
 import streamlit as st
-import openai
+import requests
+import json
 from datetime import datetime
 
 # إعدادات الصفحة
@@ -151,21 +152,8 @@ st.markdown("""
     .footer-container a:hover {
         text-decoration: underline;
     }
-    
-    .loading-spinner {
-        display: inline-block;
-        animation: spin 1s linear infinite;
-    }
-    
-    @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-    }
 </style>
 """, unsafe_allow_html=True)
-
-# إعداد OpenAI API
-openai.api_key = st.secrets.get("OPENAI_API_KEY", "")
 
 # رأس الصفحة
 st.markdown("""
@@ -178,6 +166,58 @@ st.markdown("""
 # تهيئة الجلسة
 if "messages" not in st.session_state:
     st.session_state.messages = []
+
+# دالة للحصول على رد ذكي من OpenAI
+def get_ai_response(user_message, api_key):
+    """الحصول على رد ذكي من OpenAI API"""
+    try:
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json"
+        }
+        
+        # تحضير الرسائل
+        messages = [
+            {
+                "role": "system",
+                "content": "أنت Jo Ai، وكيل ذكي أردني احترافي. تتحدث باللغة العربية بطابع أردني أصيل وودي. كن مفيداً وساعد المستخدم بأفضل طريقة ممكنة. الرد يجب أن يكون سلساً وطبيعياً."
+            }
+        ]
+        
+        # إضافة سجل المحادثة
+        for msg in st.session_state.messages[-10:]:  # آخر 10 رسائل فقط
+            messages.append({
+                "role": msg["role"],
+                "content": msg["content"]
+            })
+        
+        # إضافة الرسالة الحالية
+        messages.append({
+            "role": "user",
+            "content": user_message
+        })
+        
+        # استدعاء OpenAI API
+        response = requests.post(
+            "https://api.openai.com/v1/chat/completions",
+            headers=headers,
+            json={
+                "model": "gpt-3.5-turbo",
+                "messages": messages,
+                "temperature": 0.7,
+                "max_tokens": 2000
+            },
+            timeout=30
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            return data["choices"][0]["message"]["content"]
+        else:
+            return f"❌ خطأ من API: {response.status_code} - {response.text}"
+    
+    except Exception as e:
+        return f"❌ خطأ: {str(e)}"
 
 # عرض الرسائل السابقة
 chat_container = st.container()
@@ -235,8 +275,10 @@ st.markdown('</div>', unsafe_allow_html=True)
 
 # معالجة الرسالة
 if send_button and user_input.strip():
-    # التحقق من وجود مفتاح API
-    if not openai.api_key:
+    # الحصول على مفتاح API
+    api_key = st.secrets.get("OPENAI_API_KEY", "")
+    
+    if not api_key:
         st.error("❌ خطأ: مفتاح OpenAI API غير موجود. يرجى إضافة المفتاح في Streamlit Secrets.")
     else:
         # إضافة رسالة المستخدم
@@ -245,42 +287,16 @@ if send_button and user_input.strip():
             "content": user_input
         })
         
-        # الحصول على رد من OpenAI
-        try:
-            # تحضير الرسائل للإرسال إلى API
-            messages_for_api = [
-                {
-                    "role": "system",
-                    "content": "أنت Jo Ai، وكيل ذكي أردني احترافي. تتحدث باللغة العربية بطابع أردني أصيل. كن ودياً وساعد المستخدم بأفضل طريقة ممكنة. الرد يجب أن يكون سلساً وطبيعياً مثل ChatGPT."
-                }
-            ]
-            
-            # إضافة سجل المحادثة
-            for msg in st.session_state.messages:
-                messages_for_api.append({
-                    "role": msg["role"],
-                    "content": msg["content"]
-                })
-            
-            # استدعاء OpenAI API
-            response = openai.ChatCompletion.create(
-                model="gpt-3.5-turbo",
-                messages=messages_for_api,
-                temperature=0.7,
-                max_tokens=2000
-            )
-            
-            # الحصول على الرد
-            assistant_message = response.choices[0].message.content
+        # عرض رسالة التحميل
+        with st.spinner("⏳ جاري الرد..."):
+            # الحصول على رد من OpenAI
+            response = get_ai_response(user_input, api_key)
             
             # إضافة رد الوكيل
             st.session_state.messages.append({
                 "role": "assistant",
-                "content": assistant_message
+                "content": response
             })
-            
-        except Exception as e:
-            st.error(f"❌ خطأ: {str(e)}")
         
         # إعادة تحميل الصفحة
         st.rerun()
