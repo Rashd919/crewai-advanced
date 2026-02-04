@@ -1,7 +1,13 @@
 import streamlit as st
 import google.generativeai as genai
-from langchain_community.tools import DuckDuckGoSearchRun
+from duckduckgo_search import DDGS # التغيير هنا لضمان السرعة
 from datetime import datetime
+
+# دالة بسيطة للبحث لتجنب أخطاء المكتبات المعقدة
+def simple_search(query):
+    with DDGS() as ddgs:
+        results = [r for r in ddgs.text(query, max_results=3)]
+        return str(results)
 
 # 1. إعدادات الصفحة
 st.set_page_config(page_title="Jo Ai - الوكيل الأردني", page_icon="🇯🇴", layout="centered")
