@@ -1,0 +1,72 @@
+# بيئة Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# البيئات الافتراضية
+venv/
+ENV/
+env/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# متغيرات البيئة
+.env
+.env.local
+.env.*.local
+
+# ملفات النظام
+.DS_Store
+Thumbs.db
+
+# ملفات Streamlit
+.streamlit/
+*.streamlit.cache
+
+# ملفات السجل
+*.log
+logs/
+
+# ملفات مؤقتة
+*.tmp
+*.temp
+tmp/
+temp/
+
+# ملفات النتائج
+results/
+output/
+*.csv
+*.json
+
+# ملفات أخرى
+.pytest_cache/
+.coverage
+htmlcov/
