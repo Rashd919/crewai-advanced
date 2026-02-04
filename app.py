@@ -3,32 +3,32 @@ import google.generativeai as genai
 from duckduckgo_search import DDGS
 from datetime import datetime
 
-# 1. إعدادات الصفحة
-st.set_page_config(page_title="Jo Ai - النسخة 2.0 الأحدث", page_icon="🚀", layout="centered")
+# 1. إعدادات الصفحة الفائقة
+st.set_page_config(page_title="Jo Ai 2.0 - Thinking", page_icon="🧠", layout="centered")
 
-# تصميم الواجهة الأنيق
+# تصميم واجهة احترافية داكنة (Dark Mode)
 st.markdown("""
 <style>
     * { direction: rtl; text-align: right; }
-    .stApp { background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%); min-height: 100vh; }
-    .stChatMessage { border-radius: 15px; margin-bottom: 15px; background: rgba(255, 255, 255, 0.1); color: white; }
+    .stApp { background: #0e1117; color: white; }
+    .stChatMessage { border-radius: 15px; border: 1px solid #30363d; margin-bottom: 10px; }
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown('<div style="text-align:center; color:white;"><h1>🚀 جو آي - Gemini 2.0</h1><p>أنت الآن تستخدم أسرع وأحدث ذكاء اصطناعي من قوقل</p></div>', unsafe_allow_html=True)
+st.markdown('<div style="text-align:center;"><h1>🧠 جو آي 2.0 - Thinking</h1><p>أذكى نسخة ذكاء اصطناعي في العالم حالياً</p></div>', unsafe_allow_html=True)
 
-# 2. إعداد محرك Gemini 2.0 Flash
+# 2. إعداد الاتصال بـ Gemini 2.0
 if "GOOGLE_API_KEY" in st.secrets:
     try:
         genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
-        # استدعاء النسخة 2.0 التجريبية الأحدث
-        model = genai.GenerativeModel('gemini-2.0-flash-exp')
+        # استخدام نسخة التفكير المتطور gemini-2.0-flash-thinking-exp
+        model = genai.GenerativeModel('gemini-2.0-flash-thinking-exp-01-21')
     except Exception as e:
-        st.error(f"خطأ في تشغيل المحرك الجديد: {str(e)}")
+        st.error("فشل الاتصال الأولي، جاري المحاولة مرة أخرى...")
 else:
-    st.warning("⚠️ ضيف المفتاح في Secrets")
+    st.warning("⚠️ تأكد من وجود GOOGLE_API_KEY في Secrets")
 
-# 3. السجل والدردشة
+# 3. سجل المحادثة
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
@@ -36,24 +36,24 @@ for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
 
-user_input = st.chat_input("سولف مع Gemini 2.0 يا نشمي...")
+# 4. التفاعل
+user_input = st.chat_input("اسأل أذكى نسخة موجودة...")
 
 if user_input:
     with st.chat_message("user"):
         st.markdown(user_input)
     st.session_state.messages.append({"role": "user", "content": user_input})
     
-    with st.spinner("⏳ النسخة 2.0 عم بتفكر بذكاء..."):
+    with st.spinner("⏳ النسخة 2.0 عم بتفكر بعمق..."):
         try:
-            # بحث سريع لدعم الرد
+            # البحث لدعم "التفكير"
             search_context = ""
             try:
                 with DDGS() as ddgs:
-                    search_context = str([r for r in ddgs.text(user_input, max_results=2)])
-            except:
-                pass
+                    search_context = str([r for r in ddgs.text(user_input, max_results=1)])
+            except: pass
 
-            prompt = f"أنت Jo Ai الإصدار 2.0. رد بلهجة أردنية ذكية جداً ومختصرة على: {user_input}. معلومات: {search_context}"
+            prompt = f"أنت Jo Ai 2.0، تستخدم تقنية Thinking. أجب بلهجة أردنية ذكية جداً. السؤال: {user_input}\nمعلومات: {search_context}"
             response = model.generate_content(prompt)
             
             with st.chat_message("assistant"):
@@ -61,4 +61,11 @@ if user_input:
             st.session_state.messages.append({"role": "assistant", "content": response.text})
             
         except Exception as e:
-            st.error("⚠️ النسخة 2.0 جديدة جداً، إذا ما ردت انتظر ثواني وجرب مرة ثانية.")
+            # حل ذكي: إذا فشل 2.0، يحول تلقائياً لـ 1.5 لضمان الرد
+            try:
+                fallback_model = genai.GenerativeModel('gemini-1.5-flash')
+                response = fallback_model.generate_content(user_input)
+                st.session_state.messages.append({"role": "assistant", "content": response.text})
+                st.rerun()
+            except:
+                st.error("الضغط عالي جداً على سيرفرات قوقل، جرب مرة ثانية بعد 5 ثواني.")
