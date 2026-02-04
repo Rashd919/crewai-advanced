@@ -5,15 +5,16 @@ import streamlit as st
 from groq import Groq
 import json
 from datetime import datetime
+import pyperclip
 
 st.set_page_config(
     page_title="أبو سعود",
     page_icon="🇯🇴",
-    layout="wide",
-    initial_sidebar_state="expanded"
+    layout="centered",
+    initial_sidebar_state="collapsed"
 )
 
-# CSS محسّن مع ألوان واضحة
+# CSS محسّن
 st.markdown("""
 <style>
     * {
@@ -35,12 +36,14 @@ st.markdown("""
     
     .main {
         background: white;
+        max-width: 900px;
+        margin: 0 auto;
     }
     
     /* الشعار الأردني */
     .jordanian-header {
         text-align: center;
-        padding: 40px;
+        padding: 40px 20px;
         background: linear-gradient(135deg, #CE112E 0%, #8B0000 100%);
         border-radius: 15px;
         color: white;
@@ -49,7 +52,7 @@ st.markdown("""
     }
     
     .jordanian-header h1 {
-        font-size: 56px;
+        font-size: 48px;
         margin: 0;
         font-weight: 900;
         text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
@@ -58,56 +61,33 @@ st.markdown("""
     
     .jordanian-header p {
         margin: 15px 0 0 0;
-        font-size: 18px;
+        font-size: 16px;
         opacity: 0.95;
         font-weight: 500;
     }
     
-    /* الشريط الجانبي */
-    [data-testid="stSidebar"] {
-        background: #f8f9fa;
-        border-right: 4px solid #CE112E;
-    }
-    
-    [data-testid="stSidebar"] h3 {
-        color: #2c3e50;
-        font-weight: 700;
-        margin-top: 20px;
-        margin-bottom: 15px;
-        font-size: 18px;
-    }
-    
-    [data-testid="stSidebar"] h4 {
-        color: #34495e;
-        font-weight: 600;
-        margin-top: 15px;
-        margin-bottom: 10px;
-        font-size: 14px;
-    }
-    
-    /* الأزرار */
-    .stButton > button {
-        background: linear-gradient(135deg, #CE112E 0%, #a00a2e 100%);
+    /* زر القائمة */
+    .menu-button {
+        position: fixed;
+        top: 20px;
+        left: 20px;
+        z-index: 999;
+        background: #CE112E;
         color: white;
         border: none;
         border-radius: 8px;
-        font-weight: bold;
-        font-size: 14px;
-        padding: 10px 20px;
-        transition: all 0.3s ease;
-        width: 100%;
+        padding: 10px 15px;
+        font-size: 24px;
+        cursor: pointer;
+        box-shadow: 0 4px 12px rgba(206, 17, 38, 0.3);
     }
     
-    .stButton > button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 16px rgba(206, 17, 38, 0.3);
+    .menu-button:hover {
+        background: #a00a2e;
+        transform: scale(1.05);
     }
     
-    /* حقول الإدخال */
-    .stSelectbox, .stRadio {
-        color: #2c3e50;
-    }
-    
+    /* حقل الإدخال */
     [data-testid="stChatInputContainer"] input {
         border-radius: 25px;
         border: 2px solid #CE112E !important;
@@ -133,34 +113,30 @@ st.markdown("""
         color: #2c3e50;
     }
     
-    /* البطاقات */
-    .metric-card {
-        background: white;
-        padding: 20px;
-        border-radius: 12px;
-        border-left: 4px solid #CE112E;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    }
-    
-    /* الفاصل */
-    hr {
-        border-color: #CE112E;
-        margin: 20px 0;
-    }
-    
-    /* النصوص الصغيرة */
-    .stCaption {
-        color: #555;
-        font-size: 13px;
-        line-height: 1.6;
-    }
-    
-    /* الأيقونات */
-    .icon-row {
+    /* الأزرار الصغيرة */
+    .action-buttons {
         display: flex;
-        gap: 10px;
-        justify-content: center;
-        margin: 10px 0;
+        gap: 8px;
+        margin-top: 10px;
+        justify-content: flex-start;
+        flex-wrap: wrap;
+    }
+    
+    .action-button {
+        background: #f0f0f0;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        padding: 6px 12px;
+        font-size: 12px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        color: #2c3e50;
+    }
+    
+    .action-button:hover {
+        background: #CE112E;
+        color: white;
+        border-color: #CE112E;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -179,89 +155,81 @@ if "conversations" not in st.session_state:
     st.session_state.conversations = {}
 if "current_conversation" not in st.session_state:
     st.session_state.current_conversation = None
-if "theme" not in st.session_state:
-    st.session_state.theme = "light"
+if "show_menu" not in st.session_state:
+    st.session_state.show_menu = False
 if "stats" not in st.session_state:
     st.session_state.stats = {"total_messages": 0, "total_conversations": 0}
 
-# الشريط الجانبي
-with st.sidebar:
-    st.markdown("### ⚙️ الإعدادات")
-    
-    # المظهر
-    st.markdown("#### 🎨 المظهر")
-    theme = st.radio("اختر المظهر:", ["☀️ فاتح", "🌙 غامق"], horizontal=False)
-    st.session_state.theme = "dark" if "🌙" in theme else "light"
-    
-    # اللغة
-    st.markdown("#### 🌐 اللغة")
-    language = st.selectbox("اختر اللغة:", ["العربية 🇯🇴", "English 🇬🇧"], label_visibility="collapsed")
-    
-    st.divider()
-    
-    # المحادثات
-    st.markdown("### 💬 المحادثات")
-    
-    if st.button("➕ محادثة جديدة", use_container_width=True):
-        new_id = f"conv_{len(st.session_state.conversations) + 1}"
-        st.session_state.conversations[new_id] = []
-        st.session_state.current_conversation = new_id
-        st.session_state.messages = []
-        st.rerun()
-    
-    st.divider()
-    
-    # قائمة المحادثات السابقة
-    if st.session_state.conversations:
-        st.markdown("**المحادثات السابقة:**")
-        for conv_id, conv_messages in st.session_state.conversations.items():
-            if conv_messages:
-                first_msg = conv_messages[0]["content"][:25] + "..."
-                if st.button(f"📌 {first_msg}", use_container_width=True, key=f"conv_{conv_id}"):
-                    st.session_state.current_conversation = conv_id
-                    st.session_state.messages = conv_messages
-                    st.rerun()
-    
-    st.divider()
-    
-    # الإحصائيات
-    st.markdown("### 📊 الإحصائيات")
-    col1, col2 = st.columns(2)
-    with col1:
-        st.metric("💬 الرسائل", st.session_state.stats["total_messages"])
-    with col2:
-        st.metric("📁 المحادثات", st.session_state.stats["total_conversations"])
-    
-    st.divider()
-    
-    # الخيارات
-    st.markdown("### 🛠️ الخيارات")
-    
-    if st.button("🗑️ مسح المحادثة", use_container_width=True):
-        st.session_state.messages = []
-        st.success("تم مسح المحادثة ✓")
-        st.rerun()
-    
-    if st.button("💾 تحميل المحادثة", use_container_width=True):
+# زر القائمة (ثلاث شحطات)
+col1, col2, col3 = st.columns([1, 20, 1])
+with col1:
+    if st.button("☰", key="menu_toggle", help="فتح الإعدادات"):
+        st.session_state.show_menu = not st.session_state.show_menu
+
+# عرض القائمة إذا تم فتحها
+if st.session_state.show_menu:
+    with st.expander("⚙️ الإعدادات والأدوات", expanded=True):
+        
+        # المحادثات
+        st.markdown("### 💬 المحادثات")
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("➕ محادثة جديدة"):
+                new_id = f"conv_{len(st.session_state.conversations) + 1}"
+                st.session_state.conversations[new_id] = []
+                st.session_state.current_conversation = new_id
+                st.session_state.messages = []
+                st.success("تم إنشاء محادثة جديدة ✓")
+                st.rerun()
+        with col2:
+            if st.button("🗑️ مسح المحادثة"):
+                st.session_state.messages = []
+                st.success("تم مسح المحادثة ✓")
+                st.rerun()
+        
+        # المحادثات السابقة
+        if st.session_state.conversations:
+            st.markdown("**المحادثات السابقة:**")
+            for conv_id, conv_messages in st.session_state.conversations.items():
+                if conv_messages:
+                    first_msg = conv_messages[0]["content"][:30] + "..."
+                    if st.button(f"📌 {first_msg}", key=f"conv_{conv_id}"):
+                        st.session_state.current_conversation = conv_id
+                        st.session_state.messages = conv_messages
+                        st.rerun()
+        
+        st.divider()
+        
+        # الإحصائيات
+        st.markdown("### 📊 الإحصائيات")
+        col1, col2 = st.columns(2)
+        with col1:
+            st.metric("💬 الرسائل", st.session_state.stats["total_messages"])
+        with col2:
+            st.metric("📁 المحادثات", st.session_state.stats["total_conversations"])
+        
+        st.divider()
+        
+        # التحميل
+        st.markdown("### 💾 التحميل")
         if st.session_state.messages:
             filename = f"chat_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
             st.download_button(
-                label="📥 اضغط للتحميل",
+                label="📥 تحميل المحادثة",
                 data=json.dumps(st.session_state.messages, ensure_ascii=False, indent=2),
                 file_name=filename,
                 mime="application/json",
                 use_container_width=True
             )
         else:
-            st.warning("لا توجد محادثة لتحميلها")
-    
-    st.divider()
-    
-    # معلومات التطبيق
-    st.markdown("### ℹ️ عن التطبيق")
-    st.caption("""
-**أبو سعود**
-وكيل ذكي أردني متقدم
+            st.info("لا توجد محادثة لتحميلها")
+        
+        st.divider()
+        
+        # معلومات التطبيق
+        st.markdown("### ℹ️ عن التطبيق")
+        st.caption("""
+**أبو سعود** - وكيل ذكي أردني
 
 **المطور:**
 راشد خليل محمد أبو زيتونه
@@ -269,23 +237,18 @@ with st.sidebar:
 **التواصل:**
 📧 hhh123rrhhh@gmail.com
 📱 0775866283
-💬 واتس آب
 
 **الحقوق:**
 © 2026 جميع الحقوق محفوظة
-    """)
+        """)
 
-# المحتوى الرئيسي
-col1, col2, col3 = st.columns([1, 2, 1])
-
-with col2:
-    # الشعار الأردني
-    st.markdown("""
-    <div class="jordanian-header">
-        <h1>🇯🇴 أبو سعود</h1>
-        <p>وكيلك الذكي الأردني</p>
-    </div>
-    """, unsafe_allow_html=True)
+# الشعار الأردني
+st.markdown("""
+<div class="jordanian-header">
+    <h1>🇯🇴 أبو سعود</h1>
+    <p>وكيلك الذكي الأردني</p>
+</div>
+""", unsafe_allow_html=True)
 
 # عرض الرسائل
 for idx, message in enumerate(st.session_state.messages):
@@ -295,16 +258,16 @@ for idx, message in enumerate(st.session_state.messages):
         if message["role"] == "assistant":
             col1, col2, col3, col4 = st.columns(4)
             with col1:
-                if st.button("👍 نافع", key=f"like_{idx}"):
+                if st.button("👍", key=f"like_{idx}", help="نافع"):
                     st.toast("شكراً على التقييم الإيجابي! 😊")
             with col2:
-                if st.button("👎 ما نافع", key=f"dislike_{idx}"):
+                if st.button("👎", key=f"dislike_{idx}", help="ما نافع"):
                     st.toast("سنحاول تحسين الردود 💪")
             with col3:
-                if st.button("📋 نسخ", key=f"copy_{idx}"):
+                if st.button("📋", key=f"copy_{idx}", help="نسخ"):
                     st.toast("تم النسخ ✓")
             with col4:
-                if st.button("🔄 إعادة", key=f"retry_{idx}"):
+                if st.button("🔄", key=f"retry_{idx}", help="إعادة"):
                     st.toast("جاري إعادة الرد...")
 
 # حقل الإدخال
@@ -348,16 +311,16 @@ if prompt := st.chat_input("اكتب رسالتك هنا..."):
                 # أزرار التقييم
                 col1, col2, col3, col4 = st.columns(4)
                 with col1:
-                    if st.button("👍 نافع", key=f"like_new"):
+                    if st.button("👍", key=f"like_new", help="نافع"):
                         st.toast("شكراً على التقييم الإيجابي! 😊")
                 with col2:
-                    if st.button("👎 ما نافع", key=f"dislike_new"):
+                    if st.button("👎", key=f"dislike_new", help="ما نافع"):
                         st.toast("سنحاول تحسين الردود 💪")
                 with col3:
-                    if st.button("📋 نسخ", key=f"copy_new"):
+                    if st.button("📋", key=f"copy_new", help="نسخ"):
                         st.toast("تم النسخ ✓")
                 with col4:
-                    if st.button("🔄 إعادة", key=f"retry_new"):
+                    if st.button("🔄", key=f"retry_new", help="إعادة"):
                         st.toast("جاري إعادة الرد...")
                 
                 # حفظ الرد
@@ -378,9 +341,7 @@ if prompt := st.chat_input("اكتب رسالتك هنا..."):
 # الفوتر
 st.divider()
 st.markdown("""
-<div style='text-align: center; color: #555; font-size: 13px; margin-top: 30px;'>
-    <p><strong>🇯🇴 أبو سعود - وكيلك الذكي الأردني</strong></p>
-    <p>من تطوير: راشد خليل محمد أبو زيتونه</p>
-    <p>© 2026 جميع الحقوق محفوظة | تطبيق ذكي أردني 100%</p>
+<div style='text-align: center; color: #555; font-size: 12px; margin-top: 30px;'>
+    <p>© 2026 راشد خليل محمد أبو زيتونه - جميع الحقوق محفوظة</p>
 </div>
 """, unsafe_allow_html=True)
