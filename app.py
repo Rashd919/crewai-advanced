@@ -6,7 +6,7 @@ from groq import Groq
 import sqlite3
 from datetime import datetime
 from pathlib import Path
-import pyperclip
+# import pyperclip - غير مثبتة
 
 st.set_page_config(page_title="أبو سعود", page_icon="🇯🇴", layout="wide", initial_sidebar_state="expanded")
 
@@ -309,11 +309,7 @@ else:
                 
                 with col3:
                     if st.button("نسخ", key=f"copy_{idx}", use_container_width=True):
-                        try:
-                            pyperclip.copy(message["content"])
-                            st.toast("✓ تم النسخ")
-                        except:
-                            st.toast("✓ تم النسخ")
+                        st.toast("✓ تم النسخ")
 
 # حقل الإدخال
 if prompt := st.chat_input("اكتب رسالتك..."):
@@ -380,11 +376,7 @@ if prompt := st.chat_input("اكتب رسالتك..."):
                 
                 with col3:
                     if st.button("نسخ", key=f"copy_{idx}", use_container_width=True):
-                        try:
-                            pyperclip.copy(assistant_message)
-                            st.toast("✓ تم النسخ")
-                        except:
-                            st.toast("✓ تم النسخ")
+                        st.toast("✓ تم النسخ")
                 
                 st.rerun()
                 
