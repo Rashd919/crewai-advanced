@@ -9,6 +9,7 @@
 import streamlit as st
 from groq import Groq
 from datetime import datetime
+import os
 
 # إعدادات الصفحة
 st.set_page_config(
@@ -263,14 +264,19 @@ st.markdown('</div>', unsafe_allow_html=True)
 
 # معالجة الرسالة
 if send_button and user_input.strip():
-    # الحصول على مفتاح API
+    # الحصول على مفتاح API من Streamlit Secrets أو متغير البيئة
+    api_key = None
+    
     try:
         api_key = st.secrets["GROQ_API_KEY"]
     except:
-        st.error("❌ خطأ: مفتاح Groq API غير موجود. يرجى إضافة المفتاح في Streamlit Secrets.")
-        api_key = None
+        api_key = os.environ.get("GROQ_API_KEY")
     
-    if api_key and api_key.strip():
+    if not api_key:
+        st.error("❌ خطأ: مفتاح Groq API غير موجود. يرجى إضافة المفتاح في Streamlit Secrets أو متغير البيئة GROQ_API_KEY.")
+    elif not api_key.strip():
+        st.error("❌ المفتاح فارغ أو غير صحيح!")
+    else:
         # إضافة رسالة المستخدم
         st.session_state.messages.append({
             "role": "user",
@@ -279,14 +285,17 @@ if send_button and user_input.strip():
         
         # عرض رسالة التحميل
         with st.spinner("⏳ جاري الرد..."):
-            # الحصول على رد من Groq
-            response = get_ai_response(user_input, api_key)
-            
-            # إضافة رد الوكيل
-            st.session_state.messages.append({
-                "role": "assistant",
-                "content": response
-            })
+            try:
+                # الحصول على رد من Groq
+                response = get_ai_response(user_input, api_key)
+                
+                # إضافة رد الوكيل
+                st.session_state.messages.append({
+                    "role": "assistant",
+                    "content": response
+                })
+            except Exception as e:
+                st.error(f"❌ خطأ: {str(e)}")
         
         # إعادة تحميل الصفحة
         st.rerun()
