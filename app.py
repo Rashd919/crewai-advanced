@@ -14,14 +14,18 @@ st.markdown("""
 <style>
     * { direction: rtl; }
     
-    html, body, [data-testid="stAppViewContainer"] {
-        background: white;
-        color: #0d0d0d;
+    html, body, [data-testid="stAppViewContainer"], [data-testid="stMainBlockContainer"] {
+        background: #0d0d0d !important;
+        color: white !important;
     }
     
     [data-testid="stSidebar"] {
-        background: #f7f7f7;
-        border-right: 1px solid #d1d5db;
+        background: #1a1a1a !important;
+        border-right: 1px solid #333 !important;
+    }
+    
+    [data-testid="stSidebar"] * {
+        color: white !important;
     }
     
     [data-testid="stChatMessage"]:has(svg[data-testid="stChatMessageAvatarUser"]) > div > div {
@@ -46,16 +50,38 @@ st.markdown("""
     }
     
     [data-testid="stChatInputContainer"] {
-        background: white;
-        border-top: 1px solid #d1d5db;
-        padding: 20px;
+        background: #0d0d0d !important;
+        border-top: 1px solid #333 !important;
+        padding: 20px !important;
     }
     
     [data-testid="stChatInputContainer"] textarea {
         border-radius: 24px !important;
-        border: 1px solid #d1d5db !important;
-        background: white !important;
-        color: #0d0d0d !important;
+        border: 1px solid #333 !important;
+        background: #1a1a1a !important;
+        color: white !important;
+    }
+    
+    [data-testid="stChatInputContainer"] textarea::placeholder {
+        color: #999 !important;
+    }
+    
+    p, span, div, h1, h2, h3, h4, h5, h6 {
+        color: white !important;
+    }
+    
+    .stButton > button {
+        background: #1a1a1a !important;
+        color: white !important;
+        border: 1px solid #333 !important;
+    }
+    
+    .stButton > button:hover {
+        background: #2a2a2a !important;
+    }
+    
+    .stDivider {
+        background-color: #333 !important;
     }
 </style>
 """, unsafe_allow_html=True)
