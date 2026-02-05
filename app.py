@@ -9,10 +9,10 @@ st.set_page_config(
     page_title="أبو سعود",
     page_icon="🇯🇴",
     layout="wide",
-    initial_sidebar_state="collapsed"
+    initial_sidebar_state="expanded"
 )
 
-# CSS
+# CSS - مثل ChatGPT بالضبط
 st.markdown("""
 <style>
     * {
@@ -21,23 +21,31 @@ st.markdown("""
     }
     
     html, body, [data-testid="stAppViewContainer"] {
-        background: #0d0d0d !important;
-        color: white !important;
-    }
-    
-    [data-testid="stMainBlockContainer"] {
-        background: #0d0d0d !important;
-        padding: 20px !important;
-        margin-bottom: 120px !important;
+        background: #ffffff !important;
+        color: #000000 !important;
     }
     
     [data-testid="stSidebar"] {
-        display: none !important;
+        background: #f7f7f7 !important;
+        border-right: 1px solid #d1d5db !important;
+    }
+    
+    [data-testid="stSidebarContent"] {
+        padding: 16px !important;
+    }
+    
+    [data-testid="stMainBlockContainer"] {
+        background: #ffffff !important;
+        padding: 20px !important;
+        margin-bottom: 100px !important;
+        max-width: 900px !important;
+        margin-left: auto !important;
+        margin-right: auto !important;
     }
     
     [data-testid="stChatInputContainer"] {
-        background: #0d0d0d !important;
-        border-top: 1px solid #333 !important;
+        background: #ffffff !important;
+        border-top: 1px solid #d1d5db !important;
         padding: 16px 20px !important;
         position: fixed !important;
         bottom: 0 !important;
@@ -46,42 +54,42 @@ st.markdown("""
     }
     
     [data-testid="stChatInputContainer"] textarea {
-        border-radius: 32px !important;
-        border: 1px solid #333 !important;
-        background: #1a1a1a !important;
-        color: white !important;
-        padding: 14px 20px !important;
+        border-radius: 12px !important;
+        border: 1px solid #d1d5db !important;
+        background: #ffffff !important;
+        color: #000000 !important;
+        padding: 12px 16px !important;
         font-size: 15px !important;
         resize: none !important;
-        min-height: 48px !important;
+        min-height: 44px !important;
         max-height: 150px !important;
         direction: rtl !important;
         text-align: right !important;
     }
     
     [data-testid="stChatInputContainer"] textarea:focus {
-        border: 1px solid #555 !important;
-        box-shadow: 0 0 0 2px rgba(206, 17, 46, 0.1) !important;
+        border: 1px solid #10a37f !important;
+        box-shadow: 0 0 0 2px rgba(16, 163, 127, 0.1) !important;
         outline: none !important;
     }
     
     [data-testid="stChatInputContainer"] button {
         background: transparent !important;
         border: none !important;
-        color: #CE112E !important;
-        font-size: 20px !important;
+        color: #10a37f !important;
+        font-size: 18px !important;
         cursor: pointer !important;
         padding: 8px !important;
         transition: all 0.2s ease !important;
     }
     
     [data-testid="stChatInputContainer"] button:hover {
-        color: #ff1744 !important;
+        color: #0d8659 !important;
         transform: scale(1.1) !important;
     }
     
     [data-testid="stChatMessage"] {
-        margin: 12px 0 !important;
+        margin: 16px 0 !important;
     }
     
     [data-testid="stChatMessage"]:has(svg[data-testid="stChatMessageAvatarUser"]) {
@@ -89,18 +97,18 @@ st.markdown("""
     }
     
     [data-testid="stChatMessage"]:has(svg[data-testid="stChatMessageAvatarUser"]) > div > div {
-        background: #CE112E !important;
+        background: #10a37f !important;
         color: white !important;
-        border-radius: 20px !important;
+        border-radius: 18px !important;
         padding: 12px 16px !important;
         max-width: 70% !important;
         margin-left: auto !important;
     }
     
     [data-testid="stChatMessage"]:has(svg[data-testid="stChatMessageAvatarAssistant"]) > div > div {
-        background: #2a2a2a !important;
-        color: white !important;
-        border-radius: 20px !important;
+        background: #f7f7f7 !important;
+        color: #000000 !important;
+        border-radius: 18px !important;
         padding: 12px 16px !important;
         max-width: 70% !important;
         margin-right: auto !important;
@@ -112,21 +120,22 @@ st.markdown("""
     }
     
     .stButton > button {
-        background: #1a1a1a !important;
-        color: white !important;
-        border: 1px solid #333 !important;
+        background: transparent !important;
+        color: #000000 !important;
+        border: 1px solid #d1d5db !important;
         border-radius: 8px !important;
         padding: 8px 12px !important;
         font-size: 13px !important;
+        transition: all 0.2s ease !important;
     }
     
     .stButton > button:hover {
-        background: #2a2a2a !important;
-        border-color: #555 !important;
+        background: #f7f7f7 !important;
+        border-color: #10a37f !important;
     }
     
     p, span, div, h1, h2, h3, h4, h5, h6, label {
-        color: white !important;
+        color: #000000 !important;
         direction: rtl !important;
         text-align: right !important;
     }
@@ -135,6 +144,18 @@ st.markdown("""
     [data-testid="stToolbar"],
     [data-testid="stDecoration"] {
         display: none !important;
+    }
+    
+    .sidebar-header {
+        font-size: 18px;
+        font-weight: bold;
+        margin-bottom: 16px;
+        color: #000000;
+    }
+    
+    .sidebar-button {
+        width: 100%;
+        margin-bottom: 8px;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -146,13 +167,11 @@ except:
     st.error("❌ خطأ: مفتاح API غير موجود!")
     st.stop()
 
-# Session State - في الذاكرة فقط
+# Session State
 if "messages" not in st.session_state:
     st.session_state.messages = []
 if "saved_conversations" not in st.session_state:
     st.session_state.saved_conversations = []
-if "show_saved" not in st.session_state:
-    st.session_state.show_saved = False
 
 def detect_emotion(text):
     """تحليل بسيط للمشاعر"""
@@ -167,38 +186,34 @@ def detect_emotion(text):
         return "negative"
     return "neutral"
 
-# Header with Menu
-col1, col2, col3 = st.columns([1, 2, 1])
-
-with col1:
-    if st.button("📋 المحادثات المحفوظة"):
-        st.session_state.show_saved = not st.session_state.show_saved
-
-with col2:
+# Sidebar - مثل ChatGPT
+with st.sidebar:
     st.markdown("""
-    <div style='text-align: center;'>
-        <h2 style='margin: 0; font-size: 24px;'>🇯🇴 أبو سعود</h2>
+    <div style='text-align: center; margin-bottom: 20px;'>
+        <h2 style='margin: 0; font-size: 20px;'>🇯🇴 أبو سعود</h2>
     </div>
     """, unsafe_allow_html=True)
-
-with col3:
-    if st.button("➕ محادثة جديدة"):
-        st.session_state.messages = []
-        st.session_state.show_saved = False
-        st.rerun()
-
-# Show Saved Conversations
-if st.session_state.show_saved:
+    
+    col1, col2 = st.columns([1, 1])
+    with col1:
+        if st.button("✏️ جديد", use_container_width=True):
+            st.session_state.messages = []
+            st.rerun()
+    
+    with col2:
+        if st.button("🔍 بحث", use_container_width=True):
+            pass
+    
     st.divider()
-    st.subheader("المحادثات المحفوظة")
+    
+    st.subheader("المحادثات")
     
     if st.session_state.saved_conversations:
         for idx, conv in enumerate(st.session_state.saved_conversations):
             col1, col2 = st.columns([4, 1])
             with col1:
-                if st.button(f"{conv['title']}", use_container_width=True, key=f"saved_{idx}"):
+                if st.button(f"{conv['title'][:30]}", use_container_width=True, key=f"saved_{idx}"):
                     st.session_state.messages = conv['messages'].copy()
-                    st.session_state.show_saved = False
                     st.rerun()
             with col2:
                 if st.button("🗑️", key=f"delete_{idx}"):
@@ -208,13 +223,22 @@ if st.session_state.show_saved:
         st.caption("لا توجد محادثات محفوظة")
     
     st.divider()
+    
+    st.subheader("المعلومات")
+    st.caption("""
+    **مطورك:** راشد خليل محمد أبو زيتونه
+    
+    **البريد:** hhh123rrhhh@gmail.com
+    
+    **الواتس:** 0775866283
+    """)
 
 # Main Content
 if len(st.session_state.messages) == 0:
     st.markdown("""
-    <div style='text-align: center; padding: 150px 20px;'>
-        <h2 style='font-size: 32px; margin-bottom: 10px;'>مرحباً بك</h2>
-        <p style='color: #999; font-size: 16px;'>ابدأ محادثة جديدة</p>
+    <div style='text-align: center; padding: 200px 20px;'>
+        <h1 style='font-size: 36px; margin-bottom: 10px;'>مرحباً بك</h1>
+        <p style='color: #999; font-size: 16px;'>ابدأ محادثة جديدة مع أبو سعود</p>
     </div>
     """, unsafe_allow_html=True)
 else:
@@ -291,7 +315,7 @@ if prompt := st.chat_input("اكتب رسالتك..."):
         except Exception as e:
             st.error(f"❌ خطأ: {str(e)}")
 
-# Footer - Save Conversation Button
+# Save Conversation Button
 if len(st.session_state.messages) > 0:
     col1, col2 = st.columns([1, 1])
     with col1:
