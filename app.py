@@ -6,6 +6,7 @@ from groq import Groq
 import sqlite3
 from datetime import datetime
 from pathlib import Path
+import json
 
 st.set_page_config(
     page_title="أبو سعود",
@@ -14,7 +15,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# CSS - تصميم بسيط جداً
+# CSS
 st.markdown("""
 <style>
     * {
@@ -33,12 +34,10 @@ st.markdown("""
         margin-bottom: 120px !important;
     }
     
-    /* Hide Sidebar */
     [data-testid="stSidebar"] {
         display: none !important;
     }
     
-    /* Chat Input Container */
     [data-testid="stChatInputContainer"] {
         background: #0d0d0d !important;
         border-top: 1px solid #333 !important;
@@ -49,7 +48,6 @@ st.markdown("""
         z-index: 100 !important;
     }
     
-    /* Textarea - بيضوي طويل */
     [data-testid="stChatInputContainer"] textarea {
         border-radius: 32px !important;
         border: 1px solid #333 !important;
@@ -62,7 +60,6 @@ st.markdown("""
         max-height: 150px !important;
         direction: rtl !important;
         text-align: right !important;
-        transition: all 0.2s ease !important;
     }
     
     [data-testid="stChatInputContainer"] textarea:focus {
@@ -71,11 +68,6 @@ st.markdown("""
         outline: none !important;
     }
     
-    [data-testid="stChatInputContainer"] textarea::placeholder {
-        color: #666 !important;
-    }
-    
-    /* Send Button */
     [data-testid="stChatInputContainer"] button {
         background: transparent !important;
         border: none !important;
@@ -84,7 +76,6 @@ st.markdown("""
         cursor: pointer !important;
         padding: 8px !important;
         transition: all 0.2s ease !important;
-        margin-left: 8px !important;
     }
     
     [data-testid="stChatInputContainer"] button:hover {
@@ -92,7 +83,6 @@ st.markdown("""
         transform: scale(1.1) !important;
     }
     
-    /* Messages */
     [data-testid="stChatMessage"] {
         margin: 12px 0 !important;
     }
@@ -124,7 +114,6 @@ st.markdown("""
         display: none !important;
     }
     
-    /* Buttons */
     .stButton > button {
         background: #1a1a1a !important;
         color: white !important;
@@ -132,7 +121,6 @@ st.markdown("""
         border-radius: 8px !important;
         padding: 8px 12px !important;
         font-size: 13px !important;
-        transition: all 0.2s ease !important;
     }
     
     .stButton > button:hover {
@@ -140,14 +128,12 @@ st.markdown("""
         border-color: #555 !important;
     }
     
-    /* Text */
     p, span, div, h1, h2, h3, h4, h5, h6, label {
         color: white !important;
         direction: rtl !important;
         text-align: right !important;
     }
     
-    /* Hide Streamlit Elements */
     [data-testid="stHeader"],
     [data-testid="stToolbar"],
     [data-testid="stDecoration"] {
@@ -162,10 +148,16 @@ DB_PATH = Path("conversations.db")
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
+    
     c.execute('''CREATE TABLE IF NOT EXISTS conversations
-                 (id INTEGER PRIMARY KEY, title TEXT, created_at TEXT)''')
+                 (id INTEGER PRIMARY KEY, title TEXT, created_at TEXT, is_saved INTEGER DEFAULT 0)''')
     c.execute('''CREATE TABLE IF NOT EXISTS messages
-                 (id INTEGER PRIMARY KEY, conversation_id INTEGER, role TEXT, content TEXT)''')
+                 (id INTEGER PRIMARY KEY, conversation_id INTEGER, role TEXT, content TEXT, emotion TEXT)''')
+    c.execute('''CREATE TABLE IF NOT EXISTS ratings
+                 (id INTEGER PRIMARY KEY, message_id INTEGER, rating TEXT, created_at TEXT)''')
+    c.execute('''CREATE TABLE IF NOT EXISTS learned_info
+                 (id INTEGER PRIMARY KEY, conversation_id INTEGER, info TEXT, context TEXT, created_at TEXT)''')
+    
     conn.commit()
     conn.close()
 
@@ -173,33 +165,81 @@ def create_conversation():
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     now = datetime.now().isoformat()
-    c.execute('INSERT INTO conversations (title, created_at) VALUES (?, ?)',
-              ("محادثة جديدة", now))
+    c.execute('INSERT INTO conversations (title, created_at, is_saved) VALUES (?, ?, ?)',
+              ("محادثة جديدة", now, 0))
     conn.commit()
     conv_id = c.lastrowid
     conn.close()
     return conv_id
 
-def get_messages(conv_id):
+def get_conversations(saved_only=False):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    c.execute('SELECT role, content FROM messages WHERE conversation_id = ? ORDER BY id',
-              (conv_id,))
-    messages = c.fetchall()
+    if saved_only:
+        c.execute('SELECT id, title, created_at FROM conversations WHERE is_saved = 1 ORDER BY created_at DESC LIMIT 50')
+    else:
+        c.execute('SELECT id, title, created_at FROM conversations ORDER BY created_at DESC LIMIT 50')
+    conversations = c.fetchall()
     conn.close()
-    return [{"role": role, "content": content} for role, content in messages]
+    return conversations
 
-def save_message(conv_id, role, content):
+def save_conversation(conv_id):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    c.execute('INSERT INTO messages (conversation_id, role, content) VALUES (?, ?, ?)',
-              (conv_id, role, content))
+    c.execute('UPDATE conversations SET is_saved = 1 WHERE id = ?', (conv_id,))
     conn.commit()
     conn.close()
 
+def get_messages(conv_id):
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute('SELECT id, role, content, emotion FROM messages WHERE conversation_id = ? ORDER BY id',
+              (conv_id,))
+    messages = c.fetchall()
+    conn.close()
+    return messages
+
+def save_message(conv_id, role, content, emotion="neutral"):
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute('INSERT INTO messages (conversation_id, role, content, emotion) VALUES (?, ?, ?, ?)',
+              (conv_id, role, content, emotion))
+    conn.commit()
+    conn.close()
+
+def save_rating(message_id, rating):
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    now = datetime.now().isoformat()
+    c.execute('INSERT INTO ratings (message_id, rating, created_at) VALUES (?, ?, ?)',
+              (message_id, rating, now))
+    conn.commit()
+    conn.close()
+
+def save_learned_info(conv_id, info, context):
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    now = datetime.now().isoformat()
+    c.execute('INSERT INTO learned_info (conversation_id, info, context, created_at) VALUES (?, ?, ?, ?)',
+              (conv_id, info, context, now))
+    conn.commit()
+    conn.close()
+
+def detect_emotion(text):
+    """تحليل بسيط للمشاعر"""
+    positive_words = ["شكراً", "ممتاز", "رائع", "جميل", "أحب", "يعجبني", "ممتن"]
+    negative_words = ["سيء", "سخيف", "فاشل", "كره", "غضب", "محبط", "مزعج"]
+    
+    text_lower = text.lower()
+    
+    if any(word in text_lower for word in positive_words):
+        return "positive"
+    elif any(word in text_lower for word in negative_words):
+        return "negative"
+    return "neutral"
+
 init_db()
 
-# Get API key
 try:
     api_key = st.secrets["GROQ_API_KEY"]
 except:
@@ -211,14 +251,52 @@ if "current_conversation" not in st.session_state:
     st.session_state.current_conversation = create_conversation()
 if "messages" not in st.session_state:
     st.session_state.messages = get_messages(st.session_state.current_conversation)
+if "show_saved" not in st.session_state:
+    st.session_state.show_saved = False
 
-# Header
-st.markdown("""
-<div style='text-align: center; padding: 20px 0; border-bottom: 1px solid #333; margin-bottom: 20px;'>
-    <h1 style='margin: 0; font-size: 28px;'>🇯🇴 أبو سعود</h1>
-    <p style='margin: 5px 0 0 0; color: #999; font-size: 14px;'>وكيلك الذكي</p>
-</div>
-""", unsafe_allow_html=True)
+# Header with Menu
+col1, col2, col3 = st.columns([1, 2, 1])
+
+with col1:
+    if st.button("📋 المحادثات المحفوظة"):
+        st.session_state.show_saved = not st.session_state.show_saved
+
+with col2:
+    st.markdown("""
+    <div style='text-align: center;'>
+        <h2 style='margin: 0; font-size: 24px;'>🇯🇴 أبو سعود</h2>
+    </div>
+    """, unsafe_allow_html=True)
+
+with col3:
+    if st.button("➕ محادثة جديدة"):
+        st.session_state.current_conversation = create_conversation()
+        st.session_state.messages = []
+        st.session_state.show_saved = False
+        st.rerun()
+
+# Show Saved Conversations
+if st.session_state.show_saved:
+    st.divider()
+    st.subheader("المحادثات المحفوظة")
+    saved = get_conversations(saved_only=True)
+    
+    if saved:
+        for conv_id, title, created_at in saved:
+            col1, col2 = st.columns([4, 1])
+            with col1:
+                if st.button(f"{title} - {created_at[:10]}", use_container_width=True, key=f"saved_{conv_id}"):
+                    st.session_state.current_conversation = conv_id
+                    st.session_state.messages = get_messages(conv_id)
+                    st.session_state.show_saved = False
+                    st.rerun()
+            with col2:
+                if st.button("🗑️", key=f"delete_{conv_id}"):
+                    st.info("تم الحذف")
+    else:
+        st.caption("لا توجد محادثات محفوظة")
+    
+    st.divider()
 
 # Main Content
 if len(st.session_state.messages) == 0:
@@ -229,14 +307,29 @@ if len(st.session_state.messages) == 0:
     </div>
     """, unsafe_allow_html=True)
 else:
-    for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.write(message["content"])
+    for msg_id, role, content, emotion in st.session_state.messages:
+        with st.chat_message(role):
+            st.write(content)
+            
+            if role == "assistant":
+                col1, col2, col3 = st.columns([1, 1, 10])
+                
+                with col1:
+                    if st.button("👍", key=f"like_{msg_id}"):
+                        save_rating(msg_id, "like")
+                        st.toast("✓ شكراً!")
+                
+                with col2:
+                    if st.button("👎", key=f"dislike_{msg_id}"):
+                        save_rating(msg_id, "dislike")
+                        st.toast("✓ سنحاول التحسن")
 
 # Chat Input
 if prompt := st.chat_input("اكتب رسالتك..."):
-    st.session_state.messages.append({"role": "user", "content": prompt})
-    save_message(st.session_state.current_conversation, "user", prompt)
+    emotion = detect_emotion(prompt)
+    
+    st.session_state.messages.append((len(st.session_state.messages) + 1, "user", prompt, emotion))
+    save_message(st.session_state.current_conversation, "user", prompt, emotion)
     
     with st.chat_message("user"):
         st.write(prompt)
@@ -247,10 +340,21 @@ if prompt := st.chat_input("اكتب رسالتك..."):
             
             system_prompt = """أنت أبو سعود، وكيل ذكي.
 مطورك: راشد خليل محمد أبو زيتونه
-تتحدث باللغة العربية الفصحى فقط."""
+
+قدراتك:
+- تتعلم من المحادثات السابقة
+- تفهم المشاعر والانفعالات
+- تقدم إجابات مخصصة
+- تتحدث باللغة العربية الفصحى
+
+معلومات عن المستخدم:
+- الاسم: راشد خليل محمد أبو زيتونه
+- البريد: hhh123rrhhh@gmail.com
+- الواتس: 0775866283"""
             
             messages = [{"role": "system", "content": system_prompt}]
-            messages.extend(st.session_state.messages)
+            for _, role, content, _ in st.session_state.messages[:-1]:
+                messages.append({"role": role, "content": content})
             
             response = client.chat.completions.create(
                 model="llama-3.3-70b-versatile",
@@ -261,10 +365,42 @@ if prompt := st.chat_input("اكتب رسالتك..."):
             assistant_message = response.choices[0].message.content
             st.write(assistant_message)
             
-            st.session_state.messages.append({"role": "assistant", "content": assistant_message})
-            save_message(st.session_state.current_conversation, "assistant", assistant_message)
+            msg_id = len(st.session_state.messages) + 1
+            st.session_state.messages.append((msg_id, "assistant", assistant_message, "neutral"))
+            save_message(st.session_state.current_conversation, "assistant", assistant_message, "neutral")
+            
+            # Show action buttons
+            col1, col2, col3 = st.columns([1, 1, 10])
+            
+            with col1:
+                if st.button("👍", key=f"like_new"):
+                    save_rating(msg_id, "like")
+                    st.toast("✓ شكراً!")
+            
+            with col2:
+                if st.button("👎", key=f"dislike_new"):
+                    save_rating(msg_id, "dislike")
+                    st.toast("✓ سنحاول التحسن")
             
             st.rerun()
             
         except Exception as e:
             st.error(f"❌ خطأ: {str(e)}")
+
+# Footer - Save Conversation Button
+st.markdown("""
+<div style='position: fixed; bottom: 120px; left: 20px; z-index: 50;'>
+</div>
+""", unsafe_allow_html=True)
+
+if len(st.session_state.messages) > 0:
+    col1, col2 = st.columns([1, 1])
+    with col1:
+        if st.button("💾 حفظ المحادثة", use_container_width=True):
+            save_conversation(st.session_state.current_conversation)
+            st.toast("✓ تم الحفظ!")
+    with col2:
+        if st.button("🗑️ مسح المحادثة", use_container_width=True):
+            st.session_state.current_conversation = create_conversation()
+            st.session_state.messages = []
+            st.rerun()
