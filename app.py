@@ -6,59 +6,98 @@ from groq import Groq
 import sqlite3
 from datetime import datetime
 from pathlib import Path
-# import pyperclip - غير مثبتة
 
-st.set_page_config(page_title="أبو سعود", page_icon="🇯🇴", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(
+    page_title="أبو سعود",
+    page_icon="🇯🇴",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
-# CSS - تصميم ChatGPT
+# ============================================================================
+# CSS - تصميم احترافي مثل ChatGPT
+# ============================================================================
 st.markdown("""
 <style>
-    * { direction: rtl; }
+    * {
+        direction: rtl;
+        text-align: right;
+    }
     
-    html, body, [data-testid="stAppViewContainer"], [data-testid="stMainBlockContainer"] {
+    html, body, [data-testid="stAppViewContainer"] {
         background: #0d0d0d !important;
         color: white !important;
     }
     
+    [data-testid="stMainBlockContainer"] {
+        background: #0d0d0d !important;
+        padding: 0 !important;
+    }
+    
+    /* Sidebar - ثابت على اليسار */
     [data-testid="stSidebar"] {
         background: #1a1a1a !important;
-        border-right: 1px solid #333 !important;
+        border-left: 1px solid #333 !important;
         width: 260px !important;
+        position: fixed !important;
+        right: 0 !important;
+        height: 100vh !important;
+        overflow-y: auto !important;
     }
     
     [data-testid="stSidebar"] * {
         color: white !important;
+        direction: rtl !important;
+        text-align: right !important;
+    }
+    
+    /* Chat Messages */
+    [data-testid="stChatMessage"] {
+        margin: 12px 0 !important;
+    }
+    
+    [data-testid="stChatMessage"]:has(svg[data-testid="stChatMessageAvatarUser"]) {
+        flex-direction: row-reverse !important;
     }
     
     [data-testid="stChatMessage"]:has(svg[data-testid="stChatMessageAvatarUser"]) > div > div {
         background: #CE112E !important;
         color: white !important;
-        border-radius: 12px;
-        margin-right: auto;
-        margin-left: 0;
+        border-radius: 18px !important;
+        padding: 12px 16px !important;
+        max-width: 70% !important;
+        margin-right: 0 !important;
+        margin-left: auto !important;
     }
     
     [data-testid="stChatMessage"]:has(svg[data-testid="stChatMessageAvatarAssistant"]) > div > div {
         background: #2a2a2a !important;
         color: white !important;
-        border-radius: 12px;
-        margin-left: auto;
-        margin-right: 0;
+        border-radius: 18px !important;
+        padding: 12px 16px !important;
+        max-width: 70% !important;
+        margin-left: 0 !important;
+        margin-right: auto !important;
     }
     
     [data-testid="stChatMessageAvatarUser"],
     [data-testid="stChatMessageAvatarAssistant"] {
-        display: none;
+        display: none !important;
     }
     
+    /* Chat Input */
     [data-testid="stChatInputContainer"] {
         background: #0d0d0d !important;
         border-top: 1px solid #333 !important;
-        padding: 20px !important;
+        padding: 16px 20px !important;
+        position: fixed !important;
+        bottom: 0 !important;
+        width: calc(100% - 260px) !important;
+        right: 260px !important;
     }
     
     [data-testid="stChatInputContainer"] textarea {
-        border-radius: 32px !important;
+        border-radius: 24px !important;
         border: 1px solid #444 !important;
         background: #1a1a1a !important;
         color: white !important;
@@ -67,27 +106,29 @@ st.markdown("""
         resize: none !important;
         min-height: 44px !important;
         max-height: 200px !important;
+        direction: rtl !important;
+        text-align: right !important;
     }
     
     [data-testid="stChatInputContainer"] textarea:focus {
         border: 1px solid #555 !important;
         box-shadow: 0 0 0 3px rgba(206, 17, 46, 0.1) !important;
+        outline: none !important;
     }
     
     [data-testid="stChatInputContainer"] textarea::placeholder {
         color: #666 !important;
     }
     
-    p, span, div, h1, h2, h3, h4, h5, h6 {
-        color: white !important;
-    }
-    
+    /* Buttons */
     .stButton > button {
         background: #1a1a1a !important;
         color: white !important;
         border: 1px solid #333 !important;
         border-radius: 8px !important;
         transition: all 0.2s ease !important;
+        padding: 8px 12px !important;
+        font-size: 13px !important;
     }
     
     .stButton > button:hover {
@@ -95,33 +136,40 @@ st.markdown("""
         border-color: #555 !important;
     }
     
+    /* Text Elements */
+    p, span, div, h1, h2, h3, h4, h5, h6, label {
+        color: white !important;
+        direction: rtl !important;
+        text-align: right !important;
+    }
+    
+    /* Divider */
     .stDivider {
         background-color: #333 !important;
     }
     
-    /* إخفاء العناصر غير المرغوبة */
-    [data-testid="stHeader"] {
-        display: none;
+    /* Hide Streamlit Elements */
+    [data-testid="stHeader"],
+    [data-testid="stToolbar"],
+    [data-testid="stDecoration"] {
+        display: none !important;
     }
     
-    [data-testid="stToolbar"] {
-        display: none;
+    /* Main Content Area */
+    [data-testid="stMainBlockContainer"] {
+        margin-right: 260px !important;
+        margin-bottom: 100px !important;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# الحصول على API key
-try:
-    api_key = st.secrets["GROQ_API_KEY"]
-except:
-    st.error("❌ خطأ: مفتاح API غير موجود!")
-    st.stop()
-
-# قاعدة البيانات
+# ============================================================================
+# Database Setup
+# ============================================================================
 DB_PATH = Path("conversations.db")
 
 def init_db():
-    """تهيئة قاعدة البيانات"""
+    """Initialize database"""
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     
@@ -130,25 +178,14 @@ def init_db():
     c.execute('''CREATE TABLE IF NOT EXISTS messages
                  (id INTEGER PRIMARY KEY, conversation_id INTEGER, role TEXT, content TEXT, created_at TEXT,
                   FOREIGN KEY(conversation_id) REFERENCES conversations(id))''')
-    c.execute('''CREATE TABLE IF NOT EXISTS learning
-                 (id INTEGER PRIMARY KEY, key TEXT, value TEXT, frequency INTEGER, created_at TEXT)''')
     c.execute('''CREATE TABLE IF NOT EXISTS ratings
-                 (id INTEGER PRIMARY KEY, message_id INTEGER, rating TEXT, created_at TEXT)''')
+                 (id INTEGER PRIMARY KEY, message_id TEXT, rating TEXT, created_at TEXT)''')
     
     conn.commit()
     conn.close()
 
-def get_conversations():
-    """الحصول على جميع المحادثات"""
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute('SELECT id, title, updated_at FROM conversations ORDER BY updated_at DESC')
-    conversations = c.fetchall()
-    conn.close()
-    return conversations
-
 def create_conversation(title):
-    """إنشاء محادثة جديدة"""
+    """Create new conversation"""
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     now = datetime.now().isoformat()
@@ -159,8 +196,17 @@ def create_conversation(title):
     conn.close()
     return conv_id
 
+def get_conversations():
+    """Get all conversations"""
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute('SELECT id, title, updated_at FROM conversations ORDER BY updated_at DESC LIMIT 20')
+    conversations = c.fetchall()
+    conn.close()
+    return conversations
+
 def get_conversation_messages(conv_id):
-    """الحصول على رسائل محادثة معينة"""
+    """Get messages from conversation"""
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     c.execute('SELECT role, content FROM messages WHERE conversation_id = ? ORDER BY id',
@@ -170,7 +216,7 @@ def get_conversation_messages(conv_id):
     return [{"role": role, "content": content} for role, content in messages]
 
 def save_message(conv_id, role, content):
-    """حفظ رسالة"""
+    """Save message to database"""
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     now = datetime.now().isoformat()
@@ -180,41 +226,8 @@ def save_message(conv_id, role, content):
     conn.commit()
     conn.close()
 
-def search_conversations(query):
-    """البحث في المحادثات"""
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute('''SELECT DISTINCT c.id, c.title, c.updated_at 
-                 FROM conversations c
-                 JOIN messages m ON c.id = m.conversation_id
-                 WHERE m.content LIKE ? OR c.title LIKE ?
-                 ORDER BY c.updated_at DESC''',
-              (f"%{query}%", f"%{query}%"))
-    results = c.fetchall()
-    conn.close()
-    return results
-
-def add_learning(key, value):
-    """إضافة معلومة للتعلم الذاتي"""
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    now = datetime.now().isoformat()
-    
-    c.execute('SELECT id, frequency FROM learning WHERE key = ?', (key,))
-    result = c.fetchone()
-    
-    if result:
-        c.execute('UPDATE learning SET frequency = frequency + 1, created_at = ? WHERE key = ?',
-                  (now, key))
-    else:
-        c.execute('INSERT INTO learning (key, value, frequency, created_at) VALUES (?, ?, ?, ?)',
-                  (key, value, 1, now))
-    
-    conn.commit()
-    conn.close()
-
-def add_rating(message_id, rating):
-    """إضافة تقييم"""
+def save_rating(message_id, rating):
+    """Save rating"""
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     now = datetime.now().isoformat()
@@ -223,104 +236,138 @@ def add_rating(message_id, rating):
     conn.commit()
     conn.close()
 
-def get_learning_data():
-    """الحصول على بيانات التعلم"""
+def search_conversations(query):
+    """Search conversations"""
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    c.execute('SELECT key, value, frequency FROM learning ORDER BY frequency DESC LIMIT 10')
-    data = c.fetchall()
+    c.execute('''SELECT DISTINCT c.id, c.title, c.updated_at 
+                 FROM conversations c
+                 JOIN messages m ON c.id = m.conversation_id
+                 WHERE m.content LIKE ? OR c.title LIKE ?
+                 ORDER BY c.updated_at DESC LIMIT 10''',
+              (f"%{query}%", f"%{query}%"))
+    results = c.fetchall()
     conn.close()
-    return data
+    return results
 
-# تهيئة قاعدة البيانات
+# Initialize database
 init_db()
 
-# تهيئة الجلسة
+# Get API key
+try:
+    api_key = st.secrets["GROQ_API_KEY"]
+except:
+    st.error("❌ خطأ: مفتاح API غير موجود!")
+    st.stop()
+
+# ============================================================================
+# Session State
+# ============================================================================
 if "current_conversation" not in st.session_state:
     st.session_state.current_conversation = None
 if "messages" not in st.session_state:
     st.session_state.messages = []
+if "is_generating" not in st.session_state:
+    st.session_state.is_generating = False
 
-# الشريط الجانبي
+# ============================================================================
+# Sidebar
+# ============================================================================
 with st.sidebar:
     st.markdown("### 🇯🇴 أبو سعود")
     
+    # New conversation button
     if st.button("➕ محادثة جديدة", use_container_width=True):
-        conv_id = create_conversation(f"محادثة جديدة")
+        conv_id = create_conversation("محادثة جديدة")
         st.session_state.current_conversation = conv_id
         st.session_state.messages = []
         st.rerun()
     
     st.divider()
     
-    search_query = st.text_input("🔍 ابحث...", placeholder="ابحث")
+    # Search
+    search_query = st.text_input("🔍 ابحث...", placeholder="ابحث في المحادثات")
     if search_query:
         results = search_conversations(search_query)
-        for conv_id, title, updated_at in results[:5]:
+        st.subheader("النتائج")
+        for conv_id, title, _ in results:
             if st.button(f"{title}", use_container_width=True, key=f"search_{conv_id}"):
                 st.session_state.current_conversation = conv_id
                 st.session_state.messages = get_conversation_messages(conv_id)
                 st.rerun()
     else:
-        st.subheader("المحادثات")
+        # Previous conversations
+        st.subheader("المحادثات السابقة")
         conversations = get_conversations()
-        for conv_id, title, updated_at in conversations[:10]:
-            if st.button(f"{title}", use_container_width=True, key=f"conv_{conv_id}"):
-                st.session_state.current_conversation = conv_id
-                st.session_state.messages = get_conversation_messages(conv_id)
-                st.rerun()
+        if conversations:
+            for conv_id, title, _ in conversations:
+                if st.button(f"{title}", use_container_width=True, key=f"conv_{conv_id}"):
+                    st.session_state.current_conversation = conv_id
+                    st.session_state.messages = get_conversation_messages(conv_id)
+                    st.rerun()
+        else:
+            st.caption("لا توجد محادثات سابقة")
 
-# المحتوى الرئيسي
+# ============================================================================
+# Main Content
+# ============================================================================
+
+# Create new conversation if needed
 if st.session_state.current_conversation is None:
-    conv_id = create_conversation(f"محادثة جديدة")
+    conv_id = create_conversation("محادثة جديدة")
     st.session_state.current_conversation = conv_id
     st.session_state.messages = []
 
-# رسالة ترحيب
+# Welcome message
 if len(st.session_state.messages) == 0:
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         st.markdown("""
-        <div style='text-align: center; padding: 100px 20px;'>
-            <h2 style='color: white; font-size: 32px;'>أبو سعود</h2>
-            <p style='color: #999; font-size: 14px;'>ابدأ محادثة جديدة</p>
+        <div style='text-align: center; padding: 150px 20px; color: white;'>
+            <h1 style='font-size: 40px; margin-bottom: 10px;'>أبو سعود</h1>
+            <p style='color: #999; font-size: 16px;'>وكيلك الذكي</p>
+            <p style='color: #666; font-size: 14px; margin-top: 40px;'>ابدأ محادثة جديدة أو اسأل أي سؤال</p>
         </div>
         """, unsafe_allow_html=True)
 else:
-    # عرض الرسائل
+    # Display messages
     for idx, message in enumerate(st.session_state.messages):
         with st.chat_message(message["role"]):
             st.write(message["content"])
             
+            # Action buttons for assistant messages
             if message["role"] == "assistant":
                 col1, col2, col3, col4 = st.columns([1, 1, 1, 10])
                 
                 with col1:
                     if st.button("مفيد", key=f"like_{idx}", use_container_width=True):
-                        add_learning("تقييم إيجابي", message["content"][:50])
-                        add_rating(idx, "like")
-                        st.toast("✓ شكراً!")
+                        save_rating(f"msg_{idx}", "like")
+                        st.toast("✓ شكراً على التقييم!")
                 
                 with col2:
                     if st.button("غير مفيد", key=f"dislike_{idx}", use_container_width=True):
-                        add_learning("تقييم سلبي", message["content"][:50])
-                        add_rating(idx, "dislike")
-                        st.toast("✓ تمام")
+                        save_rating(f"msg_{idx}", "dislike")
+                        st.toast("✓ سنحاول التحسن")
                 
                 with col3:
                     if st.button("نسخ", key=f"copy_{idx}", use_container_width=True):
                         st.toast("✓ تم النسخ")
 
-# حقل الإدخال
-if prompt := st.chat_input("اكتب رسالتك..."):
+# ============================================================================
+# Chat Input
+# ============================================================================
+if prompt := st.chat_input("اكتب رسالتك هنا..."):
+    # Add user message
     st.session_state.messages.append({"role": "user", "content": prompt})
     save_message(st.session_state.current_conversation, "user", prompt)
     
+    # Display user message
     with st.chat_message("user"):
         st.write(prompt)
     
+    # Generate response
     with st.chat_message("assistant"):
-        with st.spinner("جاري الرد..."):
+        with st.spinner("جاري الكتابة..."):
             try:
                 client = Groq(api_key=api_key)
                 
@@ -352,30 +399,25 @@ if prompt := st.chat_input("اكتب رسالتك..."):
                 assistant_message = response.choices[0].message.content
                 st.write(assistant_message)
                 
+                # Save assistant message
                 st.session_state.messages.append({"role": "assistant", "content": assistant_message})
                 save_message(st.session_state.current_conversation, "assistant", assistant_message)
                 
-                if "؟" in prompt:
-                    add_learning("سؤال", prompt[:50])
-                
-                # أدوات الرد
-                idx = len(st.session_state.messages) - 1
+                # Display action buttons
                 col1, col2, col3, col4 = st.columns([1, 1, 1, 10])
                 
                 with col1:
-                    if st.button("مفيد", key=f"like_{idx}", use_container_width=True):
-                        add_learning("تقييم إيجابي", assistant_message[:50])
-                        add_rating(idx, "like")
-                        st.toast("✓ شكراً!")
+                    if st.button("مفيد", key=f"like_new", use_container_width=True):
+                        save_rating("new", "like")
+                        st.toast("✓ شكراً على التقييم!")
                 
                 with col2:
-                    if st.button("غير مفيد", key=f"dislike_{idx}", use_container_width=True):
-                        add_learning("تقييم سلبي", assistant_message[:50])
-                        add_rating(idx, "dislike")
-                        st.toast("✓ تمام")
+                    if st.button("غير مفيد", key=f"dislike_new", use_container_width=True):
+                        save_rating("new", "dislike")
+                        st.toast("✓ سنحاول التحسن")
                 
                 with col3:
-                    if st.button("نسخ", key=f"copy_{idx}", use_container_width=True):
+                    if st.button("نسخ", key=f"copy_new", use_container_width=True):
                         st.toast("✓ تم النسخ")
                 
                 st.rerun()
