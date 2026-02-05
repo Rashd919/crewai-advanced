@@ -11,7 +11,7 @@ st.set_page_config(
     page_title="أبو سعود",
     page_icon="🇯🇴",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"
 )
 
 # CSS - تصميم بسيط جداً
@@ -30,19 +30,12 @@ st.markdown("""
     [data-testid="stMainBlockContainer"] {
         background: #0d0d0d !important;
         padding: 20px !important;
-        margin-right: 260px !important;
         margin-bottom: 120px !important;
     }
     
+    /* Hide Sidebar */
     [data-testid="stSidebar"] {
-        background: #1a1a1a !important;
-        border-left: 1px solid #333 !important;
-    }
-    
-    [data-testid="stSidebar"] * {
-        color: white !important;
-        direction: rtl !important;
-        text-align: right !important;
+        display: none !important;
     }
     
     /* Chat Input Container */
@@ -52,8 +45,7 @@ st.markdown("""
         padding: 16px 20px !important;
         position: fixed !important;
         bottom: 0 !important;
-        width: calc(100% - 260px) !important;
-        right: 260px !important;
+        width: 100% !important;
         z-index: 100 !important;
     }
     
@@ -188,14 +180,6 @@ def create_conversation():
     conn.close()
     return conv_id
 
-def get_conversations():
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute('SELECT id, title FROM conversations ORDER BY id DESC LIMIT 20')
-    conversations = c.fetchall()
-    conn.close()
-    return conversations
-
 def get_messages(conv_id):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
@@ -228,31 +212,20 @@ if "current_conversation" not in st.session_state:
 if "messages" not in st.session_state:
     st.session_state.messages = get_messages(st.session_state.current_conversation)
 
-# Sidebar
-with st.sidebar:
-    st.markdown("### 🇯🇴 أبو سعود")
-    
-    if st.button("➕ محادثة جديدة", use_container_width=True):
-        st.session_state.current_conversation = create_conversation()
-        st.session_state.messages = []
-        st.rerun()
-    
-    st.divider()
-    
-    st.subheader("المحادثات السابقة")
-    conversations = get_conversations()
-    for conv_id, title in conversations:
-        if st.button(f"{title}", use_container_width=True, key=f"conv_{conv_id}"):
-            st.session_state.current_conversation = conv_id
-            st.session_state.messages = get_messages(conv_id)
-            st.rerun()
+# Header
+st.markdown("""
+<div style='text-align: center; padding: 20px 0; border-bottom: 1px solid #333; margin-bottom: 20px;'>
+    <h1 style='margin: 0; font-size: 28px;'>🇯🇴 أبو سعود</h1>
+    <p style='margin: 5px 0 0 0; color: #999; font-size: 14px;'>وكيلك الذكي</p>
+</div>
+""", unsafe_allow_html=True)
 
 # Main Content
 if len(st.session_state.messages) == 0:
     st.markdown("""
     <div style='text-align: center; padding: 150px 20px;'>
-        <h1 style='font-size: 40px; margin-bottom: 10px;'>أبو سعود</h1>
-        <p style='color: #999; font-size: 16px;'>وكيلك الذكي</p>
+        <h2 style='font-size: 32px; margin-bottom: 10px;'>مرحباً بك</h2>
+        <p style='color: #999; font-size: 16px;'>ابدأ محادثة جديدة</p>
     </div>
     """, unsafe_allow_html=True)
 else:
