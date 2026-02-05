@@ -3,10 +3,7 @@
 
 import streamlit as st
 from groq import Groq
-import sqlite3
 from datetime import datetime
-from pathlib import Path
-import json
 
 st.set_page_config(
     page_title="أبو سعود",
@@ -142,88 +139,20 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Database Setup
-DB_PATH = Path("conversations.db")
+# Get API key
+try:
+    api_key = st.secrets["GROQ_API_KEY"]
+except:
+    st.error("❌ خطأ: مفتاح API غير موجود!")
+    st.stop()
 
-def init_db():
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    
-    c.execute('''CREATE TABLE IF NOT EXISTS conversations
-                 (id INTEGER PRIMARY KEY, title TEXT, created_at TEXT, is_saved INTEGER DEFAULT 0)''')
-    c.execute('''CREATE TABLE IF NOT EXISTS messages
-                 (id INTEGER PRIMARY KEY, conversation_id INTEGER, role TEXT, content TEXT, emotion TEXT)''')
-    c.execute('''CREATE TABLE IF NOT EXISTS ratings
-                 (id INTEGER PRIMARY KEY, message_id INTEGER, rating TEXT, created_at TEXT)''')
-    c.execute('''CREATE TABLE IF NOT EXISTS learned_info
-                 (id INTEGER PRIMARY KEY, conversation_id INTEGER, info TEXT, context TEXT, created_at TEXT)''')
-    
-    conn.commit()
-    conn.close()
-
-def create_conversation():
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    now = datetime.now().isoformat()
-    c.execute('INSERT INTO conversations (title, created_at, is_saved) VALUES (?, ?, ?)',
-              ("محادثة جديدة", now, 0))
-    conn.commit()
-    conv_id = c.lastrowid
-    conn.close()
-    return conv_id
-
-def get_conversations(saved_only=False):
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    if saved_only:
-        c.execute('SELECT id, title, created_at FROM conversations WHERE is_saved = 1 ORDER BY created_at DESC LIMIT 50')
-    else:
-        c.execute('SELECT id, title, created_at FROM conversations ORDER BY created_at DESC LIMIT 50')
-    conversations = c.fetchall()
-    conn.close()
-    return conversations
-
-def save_conversation(conv_id):
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute('UPDATE conversations SET is_saved = 1 WHERE id = ?', (conv_id,))
-    conn.commit()
-    conn.close()
-
-def get_messages(conv_id):
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute('SELECT id, role, content, emotion FROM messages WHERE conversation_id = ? ORDER BY id',
-              (conv_id,))
-    messages = c.fetchall()
-    conn.close()
-    return messages
-
-def save_message(conv_id, role, content, emotion="neutral"):
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute('INSERT INTO messages (conversation_id, role, content, emotion) VALUES (?, ?, ?, ?)',
-              (conv_id, role, content, emotion))
-    conn.commit()
-    conn.close()
-
-def save_rating(message_id, rating):
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    now = datetime.now().isoformat()
-    c.execute('INSERT INTO ratings (message_id, rating, created_at) VALUES (?, ?, ?)',
-              (message_id, rating, now))
-    conn.commit()
-    conn.close()
-
-def save_learned_info(conv_id, info, context):
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    now = datetime.now().isoformat()
-    c.execute('INSERT INTO learned_info (conversation_id, info, context, created_at) VALUES (?, ?, ?, ?)',
-              (conv_id, info, context, now))
-    conn.commit()
-    conn.close()
+# Session State - في الذاكرة فقط
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+if "saved_conversations" not in st.session_state:
+    st.session_state.saved_conversations = []
+if "show_saved" not in st.session_state:
+    st.session_state.show_saved = False
 
 def detect_emotion(text):
     """تحليل بسيط للمشاعر"""
@@ -237,22 +166,6 @@ def detect_emotion(text):
     elif any(word in text_lower for word in negative_words):
         return "negative"
     return "neutral"
-
-init_db()
-
-try:
-    api_key = st.secrets["GROQ_API_KEY"]
-except:
-    st.error("❌ خطأ: مفتاح API غير موجود!")
-    st.stop()
-
-# Session State
-if "current_conversation" not in st.session_state:
-    st.session_state.current_conversation = create_conversation()
-if "messages" not in st.session_state:
-    st.session_state.messages = get_messages(st.session_state.current_conversation)
-if "show_saved" not in st.session_state:
-    st.session_state.show_saved = False
 
 # Header with Menu
 col1, col2, col3 = st.columns([1, 2, 1])
@@ -270,7 +183,6 @@ with col2:
 
 with col3:
     if st.button("➕ محادثة جديدة"):
-        st.session_state.current_conversation = create_conversation()
         st.session_state.messages = []
         st.session_state.show_saved = False
         st.rerun()
@@ -279,20 +191,19 @@ with col3:
 if st.session_state.show_saved:
     st.divider()
     st.subheader("المحادثات المحفوظة")
-    saved = get_conversations(saved_only=True)
     
-    if saved:
-        for conv_id, title, created_at in saved:
+    if st.session_state.saved_conversations:
+        for idx, conv in enumerate(st.session_state.saved_conversations):
             col1, col2 = st.columns([4, 1])
             with col1:
-                if st.button(f"{title} - {created_at[:10]}", use_container_width=True, key=f"saved_{conv_id}"):
-                    st.session_state.current_conversation = conv_id
-                    st.session_state.messages = get_messages(conv_id)
+                if st.button(f"{conv['title']}", use_container_width=True, key=f"saved_{idx}"):
+                    st.session_state.messages = conv['messages'].copy()
                     st.session_state.show_saved = False
                     st.rerun()
             with col2:
-                if st.button("🗑️", key=f"delete_{conv_id}"):
-                    st.info("تم الحذف")
+                if st.button("🗑️", key=f"delete_{idx}"):
+                    st.session_state.saved_conversations.pop(idx)
+                    st.rerun()
     else:
         st.caption("لا توجد محادثات محفوظة")
     
@@ -307,29 +218,26 @@ if len(st.session_state.messages) == 0:
     </div>
     """, unsafe_allow_html=True)
 else:
-    for msg_id, role, content, emotion in st.session_state.messages:
-        with st.chat_message(role):
-            st.write(content)
+    for message in st.session_state.messages:
+        with st.chat_message(message["role"]):
+            st.write(message["content"])
             
-            if role == "assistant":
+            if message["role"] == "assistant":
                 col1, col2, col3 = st.columns([1, 1, 10])
                 
                 with col1:
-                    if st.button("👍", key=f"like_{msg_id}"):
-                        save_rating(msg_id, "like")
+                    if st.button("👍", key=f"like_{id(message)}"):
                         st.toast("✓ شكراً!")
                 
                 with col2:
-                    if st.button("👎", key=f"dislike_{msg_id}"):
-                        save_rating(msg_id, "dislike")
+                    if st.button("👎", key=f"dislike_{id(message)}"):
                         st.toast("✓ سنحاول التحسن")
 
 # Chat Input
 if prompt := st.chat_input("اكتب رسالتك..."):
     emotion = detect_emotion(prompt)
     
-    st.session_state.messages.append((len(st.session_state.messages) + 1, "user", prompt, emotion))
-    save_message(st.session_state.current_conversation, "user", prompt, emotion)
+    st.session_state.messages.append({"role": "user", "content": prompt, "emotion": emotion})
     
     with st.chat_message("user"):
         st.write(prompt)
@@ -353,8 +261,8 @@ if prompt := st.chat_input("اكتب رسالتك..."):
 - الواتس: 0775866283"""
             
             messages = [{"role": "system", "content": system_prompt}]
-            for _, role, content, _ in st.session_state.messages[:-1]:
-                messages.append({"role": role, "content": content})
+            for msg in st.session_state.messages:
+                messages.append({"role": msg["role"], "content": msg["content"]})
             
             response = client.chat.completions.create(
                 model="llama-3.3-70b-versatile",
@@ -365,21 +273,17 @@ if prompt := st.chat_input("اكتب رسالتك..."):
             assistant_message = response.choices[0].message.content
             st.write(assistant_message)
             
-            msg_id = len(st.session_state.messages) + 1
-            st.session_state.messages.append((msg_id, "assistant", assistant_message, "neutral"))
-            save_message(st.session_state.current_conversation, "assistant", assistant_message, "neutral")
+            st.session_state.messages.append({"role": "assistant", "content": assistant_message, "emotion": "neutral"})
             
             # Show action buttons
             col1, col2, col3 = st.columns([1, 1, 10])
             
             with col1:
                 if st.button("👍", key=f"like_new"):
-                    save_rating(msg_id, "like")
                     st.toast("✓ شكراً!")
             
             with col2:
                 if st.button("👎", key=f"dislike_new"):
-                    save_rating(msg_id, "dislike")
                     st.toast("✓ سنحاول التحسن")
             
             st.rerun()
@@ -388,19 +292,18 @@ if prompt := st.chat_input("اكتب رسالتك..."):
             st.error(f"❌ خطأ: {str(e)}")
 
 # Footer - Save Conversation Button
-st.markdown("""
-<div style='position: fixed; bottom: 120px; left: 20px; z-index: 50;'>
-</div>
-""", unsafe_allow_html=True)
-
 if len(st.session_state.messages) > 0:
     col1, col2 = st.columns([1, 1])
     with col1:
         if st.button("💾 حفظ المحادثة", use_container_width=True):
-            save_conversation(st.session_state.current_conversation)
+            title = f"محادثة - {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+            st.session_state.saved_conversations.append({
+                "title": title,
+                "messages": st.session_state.messages.copy(),
+                "created_at": datetime.now().isoformat()
+            })
             st.toast("✓ تم الحفظ!")
     with col2:
         if st.button("🗑️ مسح المحادثة", use_container_width=True):
-            st.session_state.current_conversation = create_conversation()
             st.session_state.messages = []
             st.rerun()
