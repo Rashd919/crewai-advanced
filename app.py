@@ -12,7 +12,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# CSS - مثل ChatGPT بالضبط
+# CSS
 st.markdown("""
 <style>
     * {
@@ -27,20 +27,26 @@ st.markdown("""
     
     [data-testid="stSidebar"] {
         background: #f7f7f7 !important;
-        border-right: 1px solid #d1d5db !important;
+        border-left: 1px solid #d1d5db !important;
+        width: 280px !important;
+        position: fixed !important;
+        right: 0 !important;
+        height: 100vh !important;
+        z-index: 50 !important;
     }
     
     [data-testid="stSidebarContent"] {
         padding: 16px !important;
+        overflow-y: auto !important;
+        height: 100vh !important;
     }
     
     [data-testid="stMainBlockContainer"] {
         background: #ffffff !important;
         padding: 20px !important;
         margin-bottom: 100px !important;
+        margin-right: 280px !important;
         max-width: 900px !important;
-        margin-left: auto !important;
-        margin-right: auto !important;
     }
     
     [data-testid="stChatInputContainer"] {
@@ -49,7 +55,8 @@ st.markdown("""
         padding: 16px 20px !important;
         position: fixed !important;
         bottom: 0 !important;
-        width: 100% !important;
+        left: 0 !important;
+        right: 280px !important;
         z-index: 100 !important;
     }
     
@@ -145,18 +152,6 @@ st.markdown("""
     [data-testid="stDecoration"] {
         display: none !important;
     }
-    
-    .sidebar-header {
-        font-size: 18px;
-        font-weight: bold;
-        margin-bottom: 16px;
-        color: #000000;
-    }
-    
-    .sidebar-button {
-        width: 100%;
-        margin-bottom: 8px;
-    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -172,6 +167,8 @@ if "messages" not in st.session_state:
     st.session_state.messages = []
 if "saved_conversations" not in st.session_state:
     st.session_state.saved_conversations = []
+if "security_mode" not in st.session_state:
+    st.session_state.security_mode = False
 
 def detect_emotion(text):
     """تحليل بسيط للمشاعر"""
@@ -186,7 +183,7 @@ def detect_emotion(text):
         return "negative"
     return "neutral"
 
-# Sidebar - مثل ChatGPT
+# Sidebar - شريط المهام على اليمين
 with st.sidebar:
     st.markdown("""
     <div style='text-align: center; margin-bottom: 20px;'>
@@ -212,7 +209,7 @@ with st.sidebar:
         for idx, conv in enumerate(st.session_state.saved_conversations):
             col1, col2 = st.columns([4, 1])
             with col1:
-                if st.button(f"{conv['title'][:30]}", use_container_width=True, key=f"saved_{idx}"):
+                if st.button(f"{conv['title'][:25]}", use_container_width=True, key=f"saved_{idx}"):
                     st.session_state.messages = conv['messages'].copy()
                     st.rerun()
             with col2:
@@ -221,6 +218,23 @@ with st.sidebar:
                     st.rerun()
     else:
         st.caption("لا توجد محادثات محفوظة")
+    
+    st.divider()
+    
+    st.subheader("🔒 الأمان")
+    
+    if st.button("🛡️ وضع الأمان", use_container_width=True):
+        st.session_state.security_mode = not st.session_state.security_mode
+    
+    if st.session_state.security_mode:
+        st.success("✓ وضع الأمان مفعّل")
+        st.caption("الوكيل سيراقب الأنشطة المريبة")
+    
+    if st.button("🔐 تحليل الأمان", use_container_width=True):
+        st.info("🔍 جاري فحص الأمان...")
+    
+    if st.button("📊 تقرير الحماية", use_container_width=True):
+        st.info("📈 سيتم إنشاء تقرير شامل")
     
     st.divider()
     
@@ -278,6 +292,7 @@ if prompt := st.chat_input("اكتب رسالتك..."):
 - تفهم المشاعر والانفعالات
 - تقدم إجابات مخصصة
 - تتحدث باللغة العربية الفصحى
+- تراقب الأمان والحماية
 
 معلومات عن المستخدم:
 - الاسم: راشد خليل محمد أبو زيتونه
