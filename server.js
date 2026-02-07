@@ -10,7 +10,12 @@ const groq = new Groq({
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static('.'));
+app.use(express.static(__dirname));
+
+// تقديم index.html للمسارات الجذرية
+app.get('/', (req, res) => {
+  res.sendFile(__dirname + '/index.html');
+});
 
 // في الذاكرة (يمكن استبدالها بقاعدة بيانات لاحقاً)
 const conversationHistory = {};
@@ -159,9 +164,13 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// 404 handler
+// 404 handler - تقديم index.html للملفات المفقودة (SPA)
 app.use((req, res) => {
-  res.status(404).json({ error: 'الصفحة غير موجودة' });
+  if (req.path.startsWith('/api')) {
+    res.status(404).json({ error: 'الصفحة غير موجودة' });
+  } else {
+    res.sendFile(__dirname + '/index.html');
+  }
 });
 
 // Error handler
