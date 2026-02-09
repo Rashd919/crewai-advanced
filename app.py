@@ -1,17 +1,19 @@
 import streamlit as st
 import google.generativeai as genai
 
+# إعدادات الواجهة السيادية
 st.set_page_config(page_title="الرعد - Thunder AI", page_icon="⚡", layout="wide")
 
 st.markdown("""
     <style>
     .stApp { background-color: #050505; color: #00FFCC; }
     h1 { color: #FF0000; text-shadow: 2px 2px #000; text-align: center; }
+    .stChatMessage { border-radius: 15px; border: 1px solid #00FFCC; margin-bottom: 10px; background-color: #0a0a0a; }
     </style>
     """, unsafe_allow_html=True)
 
 st.title("⚡ الرعد (Thunder AI): النسخة 2.5")
-st.markdown("<p style='text-align: center; color: #8e8ea0;'>بإشراف المطور راشد أبو سعود</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; color: #8e8ea0;'>بروتوكول سيادي بإشراف المطور راشد أبو سعود</p>", unsafe_allow_html=True)
 
 api_key = st.secrets.get("GEMINI_API_KEY")
 
@@ -25,30 +27,23 @@ if api_key:
         with st.chat_message(msg["role"]):
             st.write(msg["content"])
 
-    if user_input := st.chat_input("أصدر أمرك للرعد..."):
+    if user_input := st.chat_input("أصدر أمرك للرعد يا راشد..."):
         st.session_state.history.append({"role": "user", "content": user_input})
         with st.chat_message("user"):
             st.write(user_input)
 
         with st.chat_message("assistant"):
             try:
-                # المحاولة الأولى: استخدام 2.5 كما طلبت
-                model = genai.GenerativeModel('gemini-2.5-flash')
+                # المحاولة باستخدام الاسم المستقر والمباشر
+                # لاحظ: شطبنا كلمة models/ عشان ما يعطي 404
+                model = genai.GenerativeModel(
+                    model_name='gemini-1.5-flash',
+                    system_instruction="أنت 'الرعد'. وكيل سيادي أردني. مطورك هو راشد أبو سعود. ناديه بـ 'مطوري راشد' ورد بلهجة نشمية."
+                )
                 response = model.generate_content(user_input)
                 st.write(response.text)
                 st.session_state.history.append({"role": "assistant", "content": response.text})
             except Exception as e:
-                if "429" in str(e):
-                    st.warning("⚠️ حصة 2.5 انتهت، جاري تفعيل بروتوكول 1.5 المستمر...")
-                    try:
-                        # المحاولة الثانية: التحويل لـ 1.5 لضمان عدم التوقف
-                        model_fallback = genai.GenerativeModel('gemini-1.5-flash')
-                        response = model_fallback.generate_content(user_input)
-                        st.write(response.text)
-                        st.session_state.history.append({"role": "assistant", "content": response.text})
-                    except Exception as e2:
-                        st.error(f"⚠️ عائق تقني: {str(e2)}")
-                else:
-                    st.error(f"⚠️ خطأ: {str(e)}")
+                st.error(f"⚠️ عائق تقني: {str(e)}")
 else:
-    st.warning("أدخل المفتاح في Secrets")
+    st.warning("أدخل المفتاح في Secrets يا راشد")
