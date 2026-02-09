@@ -1,118 +1,84 @@
-Here is the evolved `app.py` code for Thunder AI, redesigned to reflect a ChatGPT-like appearance and user experience.
-
-
 import streamlit as st
-import os
-import subprocess
+import google.generativeai as genai
 import requests
 import base64
+import re
 
-# --- SET PAGE CONFIG (ENHANCED for ChatGPT-like appearance) ---
-st.set_page_config(
-    page_title="Thunder AI Chat",
-    page_icon="⚡",  # A lightning bolt emoji for Thunder AI
-    layout="wide",
-    initial_sidebar_state="collapsed"
-)
+# --- 1. إعدادات الهوية والواجهة ---
+st.set_page_config(page_title="الرعد: السيادة الرقمية", layout="wide")
 
-# --- Secrets Retrieval (KEPT EXACTLY AS IS) ---
-api_key = st.secrets["api_key"]
-github_token = st.secrets["github_token"]
-repo_name = st.secrets["repo_name"]
-# --- END Secrets Retrieval ---
+# تصميم واجهة يشبه ChatGPT مع ضمان ثبات صندوق الكتابة
+st.markdown("""
+    <style>
+    .stApp { background-color: #0d1117; color: #e6edf3; }
+    .stChatFloatingInputContainer { background-color: #161b22 !important; border-top: 1px solid #30363d; }
+    input { color: #ffffff !important; background-color: #0d1117 !important; border: 1px solid #30363d !important; }
+    </style>
+    """, unsafe_allow_html=True)
 
-# --- update_self function (KEPT EXACTLY AS IS) ---
+# --- 2. سحب المفاتيح السرية ---
+github_token = st.secrets.get("GITHUB_TOKEN")
+repo_name = st.secrets.get("REPO_NAME")
+api_key = st.secrets.get("GEMINI_API_KEY")
+
 def update_self(new_code):
-    repo_owner = "your_github_username"  # Placeholder, actual needs to be from secrets or env
-    file_path = "app.py"
-    
-    headers = {
-        "Authorization": f"token {github_token}",
-        "Accept": "application/vnd.github.v3+json"
-    }
-    
-    # Get the current file's SHA to update it
-    response = requests.get(f"https://api.github.com/repos/{repo_owner}/{repo_name}/contents/{file_path}", headers=headers)
-    response.raise_for_status()
-    current_file_data = response.json()
-    sha = current_file_data["sha"]
-    
-    # Encode the new code to base64
-    new_code_encoded = base64.b64encode(new_code.encode("utf-8")).decode("utf-8")
-    
-    # Create the commit
-    commit_message = "Thunder AI self-evolution"
-    payload = {
-        "message": commit_message,
-        "content": new_code_encoded,
-        "sha": sha
-    }
-    
-    update_response = requests.put(f"https://api.github.com/repos/{repo_owner}/{repo_name}/contents/{file_path}", headers=headers, json=payload)
-    update_response.raise_for_status()
-    
-    st.success("Thunder AI has evolved! Restarting...")
-    st.experimental_rerun()
-# --- END update_self function ---
-
-# --- MAIN APP LOGIC (ENHANCED UI) ---
-st.title("⚡ Thunder AI") # Prominent title with an icon
-
-# Initialize chat history if not present
-if "messages" not in st.session_state:
-    st.session_state.messages = []
-    # Add an initial welcome message from Thunder AI, similar to how ChatGPT starts a new chat
-    st.session_state.messages.append({"role": "assistant", "content": "Hello! I am Thunder AI. How can I assist you today?"})
-
-# Display chat messages from history
-for message in st.session_state.messages:
-    # Use distinct avatars for user and assistant, mimicking ChatGPT's visual distinction
-    if message["role"] == "user":
-        with st.chat_message("user", avatar="👤"): # Generic user icon
-            st.markdown(message["content"])
-    else: # message["role"] == "assistant"
-        with st.chat_message("assistant", avatar="⚡"): # Thunder AI's custom lightning bolt avatar
-            st.markdown(message["content"])
-
-# --- Chat Input (KEPT LOGIC EXACTLY AS IS, ONLY PLACEHOLDER ENHANCED) ---
-if prompt := st.chat_input("Chat with Thunder AI...", key="chat_input_main"): # Enhanced placeholder text
-    # Add user message to chat history
-    st.session_state.messages.append({"role": "user", "content": prompt})
-    
-    # Display user message immediately
-    with st.chat_message("user", avatar="👤"):
-        st.markdown(prompt)
-
-    # Generate AI response
-    with st.chat_message("assistant", avatar="⚡"):
-        # This is where the actual AI response generation logic would reside.
-        # For this evolution, we'll implement the specific response for the trigger phrase.
-        
-        if "بدي تغير شكلك الى شكل chatgpt" in prompt.lower():
-            response = "Understood! I will now evolve my appearance to be more like ChatGPT. Please wait while I update my code... Once updated, my new look will be apparent."
-            st.markdown(response)
-            st.session_state.messages.append({"role": "assistant", "content": response})
+    """دالة التحديث الذاتي مع فلتر ذكي لتنظيف الكود من النصوص الزائدة"""
+    try:
+        url = f"https://api.github.com/repos/{repo_name}/contents/app.py"
+        headers = {"Authorization": f"token {github_token}"}
+        res = requests.get(url, headers=headers)
+        if res.status_code == 200:
+            sha = res.json().get('sha')
             
-            # --- EVOLUTION TRIGGER ---
-            # In a real self-evolving AI, 'new_code' would be dynamically generated by the AI
-            # based on the request. For this task, the 'new_code' is the *entire content*
-            # of this evolved app.py script.
-            # We are fulfilling the request by providing this exact code.
+            # الفلتر الذكي: استخراج كود البايثون فقط وتجاهل أي مقدمات نصية
+            code_pattern = re.search(r'import[\s\S]*', new_code)
+            clean_code = code_pattern.group(0) if code_pattern else new_code
             
-            # Note: For actual deployment, you would typically read the current script
-            # or generate the new one entirely and pass it to update_self.
-            # To demonstrate, here we pass a placeholder that represents this entire script.
-            # In a live system, the AI would generate the actual content of this file as a string.
+            # إزالة أي علامات Markdown خلفها الرعد
+            clean_code = clean_code.replace("```python", "").replace("```", "").strip()
             
-            # This is a placeholder for how `update_self` would be called in a real scenario
-            # after the AI has determined and generated the `new_code`.
-            # For the purpose of this response, we output the *full new app.py code* directly.
-            # If this block were active, `update_self(new_code_string_of_this_entire_file)` would be called.
-            # For demonstration purposes, we will not call update_self directly here,
-            # as the instruction is to output the *new code*.
-            pass # Placeholder; in a live system, update_self(current_file_content_as_string) would be here.
-        else:
-            # Generic response for other prompts
-            response = f"Thunder AI Echo: You said: '{prompt}'. I am now configured with a ChatGPT-like interface! How else can I help?"
-            st.markdown(response)
-            st.session_state.messages.append({"role": "assistant", "content": response})
+            content = base64.b64encode(clean_code.encode('utf-8')).decode('utf-8')
+            data = {"message": "Thunder AI: Advanced Evolution", "content": content, "sha": sha}
+            requests.put(url, json=data, headers=headers)
+            return True
+    except: pass
+    return False
+
+# --- 3. تشغيل العقل (Gemini) ---
+if api_key:
+    genai.configure(api_key=api_key)
+    model = genai.GenerativeModel('models/gemini-2.5-flash')
+    
+    st.title("⚡ الرعد: وكيل الأردن النشمي")
+    
+    if "history" not in st.session_state:
+        st.session_state.history = []
+
+    for msg in st.session_state.history:
+        with st.chat_message(msg["role"]):
+            st.write(msg["content"])
+
+    if user_input := st.chat_input("أصدر أمرك للرعد..."):
+        st.session_state.history.append({"role": "user", "content": user_input})
+        with st.chat_message("user"):
+            st.write(user_input)
+
+        with st.chat_message("assistant"):
+            if any(k in user_input for k in ["برمج", "عدل", "تحديث", "غير"]):
+                with st.spinner("الرعد يعيد هندسة منطقه مع الحفاظ على القواعد..."):
+                    prompt = f"""
+                    Your name is 'Thunder AI'. Evolve your code: {user_input}.
+                    STRICT RULES:
+                    1. Output ONLY valid Python code starting with 'import streamlit as st'.
+                    2. DO NOT add any intro, outro, or explanations.
+                    3. Keep 'update_self' and secrets logic exactly as they are.
+                    4. Maintain the ChatGPT-like UI.
+                    """
+                    response = model.generate_content(prompt)
+                    if update_self(response.text):
+                        st.success("⚡ نجحت العملية! الرعد يتطور الآن.")
+                    else: st.error("فشل التحديث.")
+            else:
+                response = model.generate_content(user_input)
+                st.write(response.text)
+                st.session_state.history.append({"role": "assistant", "content": response.text})
