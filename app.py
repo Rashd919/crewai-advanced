@@ -1,19 +1,19 @@
 import streamlit as st
 import google.generativeai as genai
 
-# إعدادات واجهة الرعد (نسخة راشد 2026)
+# --- 1. واجهة الرعد السيادية ---
 st.set_page_config(page_title="الرعد - Thunder AI", page_icon="⚡", layout="wide")
 
 st.markdown("""
     <style>
     .stApp { background-color: #050505; color: #00FFCC; }
-    h1 { color: #00FFCC; text-shadow: 2px 2px #FF0000; text-align: center; }
-    .stChatMessage { border: 1px solid #00FFCC; background-color: #0a0a0a; }
+    h1 { color: #00FFCC; text-shadow: 2px 2px #FF0000; text-align: center; font-size: 3rem; }
+    .stChatMessage { border: 1px solid #00FFCC; border-radius: 10px; background-color: #0a0a0a; margin-bottom: 10px; }
     </style>
     """, unsafe_allow_html=True)
 
 st.title("⚡ الرعد (Thunder AI)")
-st.write(f"<p style='text-align: center; color: #8e8ea0;'>بإشراف المطور: راشد أبو سعود</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; color: #8e8ea0;'>بإشراف المطور: راشد أبو سعود</p>", unsafe_allow_html=True)
 
 api_key = st.secrets.get("GEMINI_API_KEY")
 
@@ -33,23 +33,25 @@ if api_key:
             st.write(user_input)
 
         with st.chat_message("assistant"):
-            sys_msg = "أنت 'الرعد'. وكيل سيادي أردني. مطورك هو راشد أبو سعود. ناديه بـ 'مطوري راشد'."
+            # تعليمات النظام لتعريف المطور
+            sys_msg = "أنت 'الرعد'. وكيل سيادي أردني. مطورك هو راشد أبو سعود. ناديه دائماً بـ 'مطوري راشد'."
             
-            # الحل هنا: نستخدم الأسماء المباشرة اللي بتدعمها v1beta بدون بادئة models/
-            # ونبدأ بـ 2.0 عشان نبعد عن كوتا 2.5 اللي خلصت عندك
-            try:
-                model = genai.GenerativeModel(model_name='gemini-2.0-flash', system_instruction=sys_msg)
-                response = model.generate_content(user_input)
-                st.write(response.text)
-                st.session_state.history.append({"role": "assistant", "content": response.text})
-            except Exception as e:
-                # محاولة أخيرة بموديل 1.5 بالاسم المباشر
+            # أهم خطوة: استخدمنا الأسماء المباشرة (بدون models/) وبدأنا بـ 2.0 لضمان الحصة
+            available_models = ['gemini-2.0-flash', 'gemini-1.5-flash']
+            
+            success = False
+            for m_name in available_models:
                 try:
-                    model_fallback = genai.GenerativeModel(model_name='gemini-1.5-flash', system_instruction=sys_msg)
-                    response = model_fallback.generate_content(user_input)
+                    model = genai.GenerativeModel(model_name=m_name, system_instruction=sys_msg)
+                    response = model.generate_content(user_input)
                     st.write(response.text)
                     st.session_state.history.append({"role": "assistant", "content": response.text})
-                except Exception as e2:
-                    st.error(f"يا مطوري راشد، النظام تحت ضغط شديد. انتظر ثواني. الخطأ: {str(e2)}")
+                    success = True
+                    break
+                except Exception as e:
+                    continue # جرب الموديل اللي بعده لو الأول فيه ضغط (429) أو مش موجود (404)
+            
+            if not success:
+                st.error("⚠️ يا مطوري راشد، الضغط على الخوادم كبير حالياً. انتظر دقيقة وجرب.")
 else:
-    st.warning("أدخل المفتاح في Secrets يا راشد")
+    st.warning("⚠️ المفتاح غير مبرمج في الإعدادات.")
