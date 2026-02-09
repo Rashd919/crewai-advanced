@@ -1,14 +1,14 @@
 import streamlit as st
 import google.generativeai as genai
 
-# إعدادات الهيبة
-st.set_page_config(page_title="Thunder AI 2.5", page_icon="⚡", layout="wide")
+# إعدادات واجهة الرعد (نسخة راشد 2026)
+st.set_page_config(page_title="الرعد - Thunder AI", page_icon="⚡", layout="wide")
 
 st.markdown("""
     <style>
     .stApp { background-color: #050505; color: #00FFCC; }
-    h1 { color: #FF0000; text-shadow: 2px 2px #000; text-align: center; }
-    .stChatMessage { border-radius: 15px; border: 1px solid #00FFCC; margin-bottom: 10px; background-color: #0a0a0a; }
+    h1 { color: #00FFCC; text-shadow: 2px 2px #FF0000; text-align: center; }
+    .stChatMessage { border: 1px solid #00FFCC; background-color: #0a0a0a; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -35,26 +35,21 @@ if api_key:
         with st.chat_message("assistant"):
             sys_msg = "أنت 'الرعد'. وكيل سيادي أردني. مطورك هو راشد أبو سعود. ناديه بـ 'مطوري راشد'."
             
-            # أهم الموديلات من القائمة اللي بعثتها بالترتيب
-            best_models = [
-                'models/gemini-2.5-flash',
-                'models/gemini-2.0-flash',
-                'models/gemini-1.5-flash-latest'
-            ]
-            
-            success = False
-            for m_path in best_models:
+            # الحل هنا: نستخدم الأسماء المباشرة اللي بتدعمها v1beta بدون بادئة models/
+            # ونبدأ بـ 2.0 عشان نبعد عن كوتا 2.5 اللي خلصت عندك
+            try:
+                model = genai.GenerativeModel(model_name='gemini-2.0-flash', system_instruction=sys_msg)
+                response = model.generate_content(user_input)
+                st.write(response.text)
+                st.session_state.history.append({"role": "assistant", "content": response.text})
+            except Exception as e:
+                # محاولة أخيرة بموديل 1.5 بالاسم المباشر
                 try:
-                    model = genai.GenerativeModel(model_name=m_path, system_instruction=sys_msg)
-                    response = model.generate_content(user_input)
+                    model_fallback = genai.GenerativeModel(model_name='gemini-1.5-flash', system_instruction=sys_msg)
+                    response = model_fallback.generate_content(user_input)
                     st.write(response.text)
                     st.session_state.history.append({"role": "assistant", "content": response.text})
-                    success = True
-                    break
-                except Exception:
-                    continue # جرب الموديل اللي بعده لو الأول مشغول أو فيه مشكلة
-            
-            if not success:
-                st.error("⚠️ يا مطوري راشد، جميع البروتوكولات تحت الضغط حالياً. انتظر ثواني.")
+                except Exception as e2:
+                    st.error(f"يا مطوري راشد، النظام تحت ضغط شديد. انتظر ثواني. الخطأ: {str(e2)}")
 else:
     st.warning("أدخل المفتاح في Secrets يا راشد")
