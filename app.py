@@ -4,51 +4,24 @@ import requests
 import base64
 import re
 
-# --- 1. هندسة الواجهة الكاملة بنسبة 100% ---
+# --- 1. إعدادات الواجهة (ChatGPT Layout) ---
 st.set_page_config(
     page_title="Thunder AI",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
+# تصميم CSS لتحويل الواجهة لنسخة ChatGPT
 st.markdown("""
     <style>
-    /* ألوان ChatGPT الداكنة */
     .stApp { background-color: #343541; color: #ececf1; }
-    
-    /* الشريط الجانبي الاحترافي */
-    section[data-testid="stSidebar"] {
-        background-color: #202123 !important;
-        width: 260px !important;
-    }
-    
+    section[data-testid="stSidebar"] { background-color: #202123 !important; width: 260px !important; }
     header, footer { visibility: hidden; }
-
-    /* تنسيق المحادثة وتوسيطها */
-    .stChatMessage { padding: 2rem 15% !important; margin: 0px !important; }
+    .stChatMessage { padding: 2rem 15% !important; margin: 0px !important; border-bottom: 1px solid rgba(0,0,0,0.1); }
     [data-testid="stChatMessageAssistant"] { background-color: #444654; }
-    
-    /* صندوق الإدخال العائم */
-    .stChatFloatingInputContainer { 
-        background-color: #343541 !important; 
-        bottom: 30px !important;
-        padding: 0 15% !important;
-    }
-    
-    div[data-testid="stChatInput"] {
-        border: 1px solid #565869 !important;
-        background-color: #40414f !important;
-        border-radius: 10px !important;
-    }
-    
-    /* أزرار الشريط الجانبي */
-    .stButton>button {
-        width: 100%;
-        background-color: transparent;
-        color: white;
-        border: 1px solid #4d4d4f;
-        text-align: left;
-    }
+    .stChatFloatingInputContainer { background-color: #343541 !important; bottom: 30px !important; padding: 0 15% !important; }
+    div[data-testid="stChatInput"] { border-radius: 10px !important; border: 1px solid #565869 !important; background-color: #40414f !important; }
+    .stButton>button { width: 100%; background-color: transparent; color: white; border: 1px solid #4d4d4f; text-align: left; padding: 10px; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -58,7 +31,6 @@ repo_name = st.secrets.get("REPO_NAME")
 api_key = st.secrets.get("GEMINI_API_KEY")
 
 def apply_direct_update(new_code):
-    """دالة التحديث المباشر المحمية"""
     try:
         url = f"https://api.github.com/repos/{repo_name}/contents/app.py"
         headers = {"Authorization": f"token {github_token}"}
@@ -76,37 +48,36 @@ def apply_direct_update(new_code):
     except: pass
     return False
 
-# --- 2. تشغيل المحرك (تم تحديث الموديل لضمان العمل) ---
+# --- 2. تشغيل المحرك (نسخة مستقرة جداً) ---
 if api_key:
     genai.configure(api_key=api_key)
-    # استخدام الموديل الأكثر استقراراً لتجنب خطأ NotFound
-    model = genai.GenerativeModel('gemini-1.5-flash')
+    # استخدام اسم الموديل الرسمي والمستقر لتجنب خطأ 404
+    model = genai.GenerativeModel('gemini-1.5-flash-latest')
 
-    # --- الشريط الجانبي ---
+    # --- الشريط الجانبي (موجود دائماً) ---
     with st.sidebar:
-        st.markdown("<h2 style='color: white; padding-bottom: 20px;'>Thunder AI</h2>", unsafe_allow_html=True)
-        if st.button("＋ New Chat"):
+        st.markdown("<h2 style='color: white; padding: 10px;'>Thunder AI</h2>", unsafe_allow_html=True)
+        if st.button("＋ محادثة جديدة"):
             st.session_state.messages = []
             st.rerun()
         st.markdown("---")
-        st.caption("History")
-        st.markdown("<div style='color: #8e8ea0;'>• تطوير واجهة ChatGPT</div>", unsafe_allow_html=True)
-        st.markdown("<div style='color: #8e8ea0;'>• إصلاح أخطاء الموديل</div>", unsafe_allow_html=True)
+        st.caption("سجل المحادثات")
+        st.markdown("<div style='color: #8e8ea0; cursor: pointer; padding: 5px;'>• واجهة ChatGPT المطورة</div>", unsafe_allow_html=True)
 
     if "messages" not in st.session_state:
         st.session_state.messages = []
 
-    # الترحيب
+    # الترحيب المركزي
     if not st.session_state.messages:
-        st.markdown("<h1 style='text-align: center; margin-top: 8rem; color: #d1d5db;'>Thunder AI</h1>", unsafe_allow_html=True)
-        st.markdown("<p style='text-align: center; color: #8e8ea0;'>كيف يمكنني مساعدتك اليوم؟</p>", unsafe_allow_html=True)
+        st.markdown("<h1 style='text-align: center; margin-top: 10rem; color: #d1d5db;'>Thunder AI</h1>", unsafe_allow_html=True)
+        st.markdown("<p style='text-align: center; color: #8e8ea0;'>أنا الرعد، كيف يمكنني خدمتك اليوم؟</p>", unsafe_allow_html=True)
 
     # عرض الرسائل
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
 
-    # المدخلات
+    # صندوق المدخلات
     if prompt := st.chat_input("أرسل رسالة للرعد..."):
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"):
@@ -115,12 +86,13 @@ if api_key:
         with st.chat_message("assistant"):
             if prompt.startswith("تحديث_مباشر") and "import" in prompt:
                 if apply_direct_update(prompt):
-                    st.success("✅ تم المزامنة! سيتم التحديث فوراً.")
-                else: st.error("❌ عائق في الاتصال.")
+                    st.success("✅ تم تحديث النظام! انتظر إعادة التشغيل.")
+                else: st.error("❌ فشل الربط.")
             else:
                 try:
-                    response = model.generate_content(f"أنت الرعد، مساعد ذكي بلهجة أردنية. رد باحترافية على: {prompt}")
+                    # إضافة سياق اللهجة الأردنية بشكل احترافي
+                    response = model.generate_content(f"أنت الرعد، مساعد ذكي بلهجة أردنية نشمية. رد باحترافية وتنسيق جميل على: {prompt}")
                     st.markdown(response.text)
                     st.session_state.messages.append({"role": "assistant", "content": response.text})
                 except Exception as e:
-                    st.error(f"حدث خطأ في المحرك: {str(e)}")
+                    st.error(f"حدث خطأ في الاتصال: تأكد من مفتاح الـ API.")
