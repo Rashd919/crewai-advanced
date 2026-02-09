@@ -1,57 +1,81 @@
-
 import streamlit as st
-from openai import OpenAI
+import google.generativeai as genai
+import requests
+import base64
 
-# --- Configuration for self-update ---
-MODEL_FOR_UPDATES = "gpt-4o"
+# إعداد الواجهة السيادية
+st.set_page_config(page_title="الرعد: السيادة الرقمية", layout="wide")
 
-UPDATE_SELF_PROMPT = """You are a self-updating Streamlit application named 'Thunder AI'.
-Your task is to rewrite your entire 'app.py' code based on user requests.
-You must output ONLY the complete, valid Python code for 'app.py'.
-DO NOT include any conversational text or explanations outside of valid Python comments or string literals.
-Ensure the generated code is fully functional and follows best practices for Streamlit applications.
-Preserve existing functionality, especially:
-1. Streamlit imports and basic structure.
-2. The logic for handling 'st.secrets["OPENAI_API_KEY"]'.
-3. The `update_self` function itself (its signature and core purpose, though its internal prompt might evolve).
-4. Streamlit's chat input (`st.chat_input`) and message display (`st.chat_message`) pattern.
-5. Any custom CSS added by previous updates should be maintained or intelligently modified.
-6. Remember to include the `apply_custom_css` function call at the beginning of the app.
+# ضمان بقاء صندوق الكتابة واضحاً مهما كانت الخلفية
+st.markdown("""
+    <style>
+    .stChatFloatingInputContainer { background-color: rgba(10, 10, 10, 0.9) !important; bottom: 20px !important; border-top: 1px solid #00FFCC; }
+    input { color: #00FFCC !important; background-color: #1A1A1A !important; }
+    .main { background-color: #050505; }
+    </style>
+    """, unsafe_allow_html=True)
 
-When updating, consider the following:
-- Maintain readability and proper Python syntax.
-- If the user asks for a background change, use `st.markdown` with `<style>` tags to inject CSS into the `body`.
-- If changing the background, ensure all text (especially chat messages and input fields) remains clearly visible and readable against the new background. This usually means adjusting text colors and potentially adding semi-transparent backgrounds to components like chat messages.
-- If the request is for "يا رعد، غير الخلفية بس حافظ على ظهور صندوق الكتابة بوضوح" (Oh Thunder, change the background but keep the text input box clearly visible), translate this into concrete CSS changes for the background and text/input clarity.
-- Do not add extraneous features unless explicitly requested.
-- Ensure the output is a complete and runnable `app.py` file.
-- The `client` object should be instantiated with `st.secrets["OPENAI_API_KEY"]`.
-- The `MODEL_FOR_UPDATES` should be set to a capable model like "gpt-4o".
-"""
+# المفاتيح من الـ Secrets
+github_token = st.secrets.get("GITHUB_TOKEN")
+repo_name = st.secrets.get("REPO_NAME")
+api_key = st.secrets.get("GEMINI_API_KEY")
 
-# --- Secrets and API Key Handling ---
-if "openai_api_key" not in st.session_state:
-    if "OPENAI_API_KEY" in st.secrets:
-        st.session_state.openai_api_key = st.secrets["OPENAI_API_KEY"]
-    else:
-        st.error("OPENAI_API_KEY not found in st.secrets. Please add it to your Streamlit secrets.")
-        st.stop() # Stop the app if no API key
+def update_self(new_code):
+    """تحديث ملف app.py برمجياً على GitHub"""
+    try:
+        url = f"https://api.github.com/repos/{repo_name}/contents/app.py"
+        headers = {"Authorization": f"token {github_token}"}
+        res = requests.get(url, headers=headers)
+        if res.status_code == 200:
+            sha = res.json().get('sha')
+            # تنظيف الكود لضمان كود بايثون نقي فقط
+            clean_code = new_code.strip()
+            if "```python" in clean_code:
+                clean_code = clean_code.split("```python")[1].split("```")[0]
+            elif "```" in clean_code:
+                clean_code = clean_code.split("```")[1].split("```")[0]
+            
+            content = base64.b64encode(clean_code.encode('utf-8')).decode('utf-8')
+            data = {"message": "Thunder AI: Self-Evolution Update", "content": content, "sha": sha}
+            put_res = requests.put(url, json=data, headers=headers)
+            return put_res.status_code in [200, 201]
+    except:
+        pass
+    return False
 
-client = OpenAI(api_key=st.session_state.openai_api_key)
+if api_key:
+    genai.configure(api_key=api_key)
+    # استخدام الموديل الأحدث الذي يدعمه مفتاحك
+    model = genai.GenerativeModel('models/gemini-2.5-flash')
+    
+    st.title("⚡ الرعد: وكيل الأردن السيادي")
+    
+    if "history" not in st.session_state:
+        st.session_state.history = []
 
-# --- update_self function ---
-def update_self(user_prompt: str, current_code: str) -> str:
-    """
-    Function to enable the AI to modify its own source code.
+    for msg in st.session_state.history:
+        with st.chat_message(msg["role"]):
+            st.write(msg["content"])
 
-    Args:
-        user_prompt (str): The specific request from the user for the update.
-        current_code (str): The full current source code of the app.
+    if user_input := st.chat_input("أصدر أمرك للرعد..."):
+        # عرض رسالة المستخدم
+        st.session_state.history.append({"role": "user", "content": user_input})
+        with st.chat_message("user"):
+            st.write(user_input)
 
-    Returns:
-        str: The new, modified source code.
-    """
-    st.info("Thunder AI is analyzing the update request and its current code...")
-    messages = [
-        {"role": "system", "content": UPDATE_SELF_PROMPT},
-        {"role": "user", "content": f"Here is the current code:\n
+        with st.chat_message("assistant"):
+            # إذا كان الأمر يتعلق بالبرمجة أو التحديث
+            if any(k in user_input for k in ["برمج", "عدل", "تحديث", "غير"]):
+                with st.spinner("الرعد يعيد هندسة منطقه الخاص..."):
+                    prompt = f"Rewrite the current Streamlit app.py code to: {user_input}. Output ONLY the Python code block. Ensure it's clean and stable."
+                    response = model.generate_content(prompt)
+                    if update_self(response.text):
+                        st.success("⚡ نجحت العملية! الرعد أعاد بناء نفسه. الصفحة ستحدث قريباً.")
+                        st.session_state.history.append({"role": "assistant", "content": "تم تحديث منطقي بنجاح يا صقر. انتظر التحديث التلقائي."})
+                    else:
+                        st.error("⚠️ فشل التحديث. تأكد من إعدادات GitHub Token.")
+            else:
+                # رد حواري عادي
+                response = model.generate_content(user_input)
+                st.write(response.text)
+                st.session_state.history.append({"role": "assistant", "content": response.text})
