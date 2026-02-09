@@ -1,59 +1,77 @@
-
 import streamlit as st
+import google.generativeai as genai
+import requests
+import base64
 
-def set_background_image(image_url: str):
-    """
-    Sets a custom background image for the Streamlit application.
-    This function injects CSS to target the main Streamlit app container.
-    Streamlit's default component styling ensures that elements like text input boxes
-    remain clearly visible against the new background due to their inherent contrast.
-    """
-    st.markdown(
-        f"""
-        <style>
-        .stApp {{
-            background-image: url("{image_url}");
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
-            background-attachment: fixed;
-        }}
-        </style>
-        """,
-        unsafe_allow_html=True
-    )
+# 1. إعداد الواجهة السيادية الثابتة
+st.set_page_config(page_title="الرعد: السيادة الرقمية", layout="wide")
 
-# --- Streamlit Application ---
+# تنسيق CSS لضمان بقاء الواجهة احترافية وصندوق الكتابة شغال
+st.markdown("""
+    <style>
+    .stChatFloatingInputContainer { background-color: rgba(10, 10, 10, 0.9) !important; bottom: 20px !important; }
+    input { color: #00FFCC !important; background-color: #1A1A1A !important; }
+    </style>
+    """, unsafe_allow_html=True)
 
-# Define the URL for your desired background image.
-# You can replace this with any image URL (e.g., from Unsplash, your own hosted image, etc.).
-# This example uses a subtle gradient image for good readability of content.
-background_image_url = "https://images.unsplash.com/photo-1557682250-33bd709ff38f?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1974&q=80"
+# 2. جلب المفاتيح
+github_token = st.secrets.get("GITHUB_TOKEN")
+repo_name = st.secrets.get("REPO_NAME")
+api_key = st.secrets.get("GEMINI_API_KEY")
 
-# Apply the background image
-set_background_image(background_image_url)
+def update_self(new_code):
+    """دالة التطور الذاتي - ممنوع حذفها يا رعد"""
+    try:
+        url = f"https://api.github.com/repos/{repo_name}/contents/app.py"
+        headers = {"Authorization": f"token {github_token}"}
+        res = requests.get(url, headers=headers)
+        if res.status_code == 200:
+            sha = res.json().get('sha')
+            clean_code = new_code.strip()
+            if "```python" in clean_code:
+                clean_code = clean_code.split("```python")[1].split("```")[0]
+            elif "```" in clean_code:
+                clean_code = clean_code.split("```")[1].split("```")[0]
+            content = base64.b64encode(clean_code.encode('utf-8')).decode('utf-8')
+            data = {"message": "Thunder AI: Critical Core Update", "content": content, "sha": sha}
+            requests.put(url, json=data, headers=headers)
+            return True
+    except: pass
+    return False
 
-st.title("يا رعد، غير الخلفية!")
-st.write("أهلاً بك في تطبيق Streamlit الجديد مع خلفية مخصصة.")
+# 3. تشغيل العقل (Gemini)
+if api_key:
+    genai.configure(api_key=api_key)
+    model = genai.GenerativeModel('models/gemini-2.5-flash')
+    
+    st.title("⚡ الرعد: وكيل الأردن السيادي")
+    
+    if "history" not in st.session_state:
+        st.session_state.history = []
 
-# A text input box is placed here to demonstrate its clear visibility
-# Streamlit components typically have their own styling that provides sufficient
-# contrast against various backgrounds.
-user_input = st.text_input(
-    "أدخل نصًا هنا للحفاظ على ظهوره بوضوح (صندوق الكتابة هذا يظل واضحًا):",
-    "هذا صندوق نصي واضح على الخلفية الجديدة."
-)
+    # عرض المحادثة
+    for msg in st.session_state.history:
+        with st.chat_message(msg["role"]):
+            st.write(msg["content"])
 
-st.write(f"لقد أدخلت: {user_input}")
+    # صندوق الكتابة الحقيقي (الذي يربط المستخدم بالذكاء الاصطناعي)
+    if user_input := st.chat_input("أصدر أمرك للرعد..."):
+        st.session_state.history.append({"role": "user", "content": user_input})
+        with st.chat_message("user"):
+            st.write(user_input)
 
-st.write("---")
-st.header("محتوى إضافي")
-st.write("هذا محتوى إضافي يظهر فوق الخلفية الجديدة.")
-
-if st.button("اضغط هنا"):
-    st.success("لقد ضغطت على الزر بنجاح!")
-
-# Example of a sidebar to show it also adapts
-st.sidebar.header("خيارات الشريط الجانبي")
-st.sidebar.slider("اختر قيمة من 0 إلى 100:", 0, 100, 50)
-st.sidebar.info("الشريط الجانبي يظهر أيضًا بوضوح.")
+        with st.chat_message("assistant"):
+            # إذا طلب المستخدم تطوير الكود
+            if any(k in user_input for k in ["برمج", "عدل", "تحديث", "غير"]):
+                with st.spinner("جاري إعادة هندسة الكود..."):
+                    # تعليمات صارمة للرعد بعدم حذف الدوال الأساسية
+                    prompt = f"Rewrite the current app.py to: {user_input}. IMPORTANT: You MUST keep the 'update_self' function and the 'st.chat_input' logic exactly as they are. Output ONLY code."
+                    response = model.generate_content(prompt)
+                    if update_self(response.text):
+                        st.success("⚡ تم التطوير بنجاح! انتظر التحديث.")
+                    else: st.error("فشل في الوصول لـ GitHub.")
+            else:
+                # رد حواري عادي
+                response = model.generate_content(user_input)
+                st.write(response.text)
+                st.session_state.history.append({"role": "assistant", "content": response.text})
