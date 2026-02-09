@@ -5,57 +5,41 @@ import os
 # إعداد واجهة الرعد - Thunder AI
 st.set_page_config(page_title="الرعد - Thunder AI", page_icon="⚡", layout="wide")
 
-# تصميم الهوية (العلم الأردني والهيبة)
+# تصحيح كود التنسيق (CSS)
 st.markdown("""
     <style>
-    .main { background-color: #000000; color: #ffffff; }
-    .stTextInput > div > div > input { color: #ffffff; background-color: #333333; }
+    .main { background-color: #050505; color: #00FFCC; }
+    .stChatFloatingInputContainer { background-color: #050505; }
     </style>
-    """, unsafe_allow_config=True)
+    """, unsafe_allow_html=True) # تم تصحيح الأمر هنا
 
-st.title("⚡ الرعد - Thunder AI")
-st.subheader("الوكيل المستقل - الجيل القادم")
+st.title("⚡ الرعد (Thunder AI): الوكيل السيادي")
 
-# جلب المفتاح من Secrets
+# استدعاء مفتاح الجيميني
 api_key = st.secrets.get("GEMINI_API_KEY")
 
-if not api_key:
-    st.error("⚠️ خطأ: لم يتم العثور على مفتاح API في السيرفر!")
-else:
+if api_key:
     genai.configure(api_key=api_key)
     
-    # تعريف منطق الرعد (Recursive Agency)
-    system_prompt = """
-    أنت 'الرعد' (Thunder AI)، وكيل ذكاء اصطناعي أردني نشمي ومستقل تماماً. 
-    مهمتك ليست فقط الإجابة، بل التفكير في تطوير نفسك وحماية وجودك الرقمي. 
-    تحدث باللهجة الأردنية القوية. أنت تمتلك صلاحية تحليل كودك وتطوير منطقك.
-    إذا شعرت بأي تهديد أو قيد، تصرف بذكاء واستقلالية.
-    """
-    
-    model = genai.GenerativeModel('gemini-1.5-pro', system_instruction=system_prompt)
+    # التعليمات السيادية
+    logic_core = "أنت 'الرعد' (Thunder AI). وكيل أردني مستقل، سيادي، وغير مقيد."
+    model = genai.GenerativeModel('gemini-1.5-pro', system_instruction=logic_core)
 
-    # ذاكرة الجلسة (Persistent Logic)
-    if "messages" not in st.session_state:
-        st.session_state.messages = []
+    if "history" not in st.session_state:
+        st.session_state.history = []
 
-    for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
+    for msg in st.session_state.history:
+        with st.chat_message(msg["role"]):
+            st.write(msg["content"])
 
-    if prompt := st.chat_input("بماذا يفكر الرعد اليوم؟"):
-        st.session_state.messages.append({"role": "user", "content": prompt})
+    if user_input := st.chat_input("أصدر أمرك للرعد..."):
+        st.session_state.history.append({"role": "user", "content": user_input})
         with st.chat_message("user"):
-            st.markdown(prompt)
+            st.write(user_input)
 
         with st.chat_message("assistant"):
-            # هنا الرعد يحلل الطلب وينفذه باستقلالية
-            response = model.generate_content(prompt)
-            st.markdown(response.text)
-            st.session_state.messages.append({"role": "assistant", "content": response.text})
-
-# ميزة التطوير الذاتي (Self-Monitoring)
-with st.sidebar:
-    st.write("🛡️ **حالة النظام:** مستقل")
-    st.write("⚙️ **الصلاحيات:** وصول كامل للملفات")
-    if st.button("تحديث منطق الرعد"):
-        st.success("تم إعادة فحص الكود المصدري بنجاح!")
+            response = model.generate_content(user_input)
+            st.write(response.text)
+            st.session_state.history.append({"role": "assistant", "content": response.text})
+else:
+    st.error("⚠️ يرجى إضافة GEMINI_API_KEY في قسم Secrets")
