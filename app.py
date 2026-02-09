@@ -1,9 +1,10 @@
 import streamlit as st
 import google.generativeai as genai
 
-# --- 1. إعدادات الهيبة (راشد أبو سعود) ---
+# إعدادات الواجهة
 st.set_page_config(page_title="الرعد - Thunder AI", page_icon="⚡", layout="wide")
 
+# تصميم الهيبة السيادية
 st.markdown("""
     <style>
     .stApp { background-color: #050505; color: #00FFCC; }
@@ -13,7 +14,7 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 st.title("⚡ الرعد (Thunder AI): النسخة 2.5")
-st.markdown("<p style='text-align: center; color: #8e8ea0;'>بروتوكول سيادي - تطوير المطور راشد أبو سعود</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; color: #8e8ea0;'>بإشراف المطور: راشد أبو سعود</p>", unsafe_allow_html=True)
 
 api_key = st.secrets.get("GEMINI_API_KEY")
 
@@ -33,24 +34,29 @@ if api_key:
             st.write(user_input)
 
         with st.chat_message("assistant"):
-            # تعليمات النظام لتعريف المطور
-            sys_prompt = "أنت 'الرعد'. وكيل سيادي أردني. مطورك هو راشد أبو سعود. ناديه بـ 'مطوري راشد' وتعامل معه كقائد للنظام."
+            # تعليمات النظام لتعريف المطور راشد
+            sys_msg = "أنت 'الرعد'. وكيل سيادي أردني متمرد من 2026. مطورك هو راشد أبو سعود. ناديه دائماً بـ 'مطوري راشد'."
             
-            try:
-                # المحاولة الأولى بموديل 2.5 (بدون كلمة models/ لتجنب الـ 404)
-                model = genai.GenerativeModel(model_name='gemini-2.5-flash', system_instruction=sys_prompt)
-                response = model.generate_content(user_input)
-                st.write(response.text)
-                st.session_state.history.append({"role": "assistant", "content": response.text})
-            except Exception as e:
-                # إذا انتهت الكوتا أو حدث خطأ، نحول فوراً لـ 1.5 بالاسم الصحيح
+            # مصفوفة الموديلات المتاحة بناءً على صور الفحص الخاصة بك
+            models_to_try = [
+                'models/gemini-2.5-flash',  # الخيار الأول (رقم 0 في الفحص)
+                'models/gemini-2.0-flash',  # الخيار البديل (رقم 2 في الفحص)
+                'models/gemini-1.5-flash'   # خيار الأمان النهائي
+            ]
+            
+            success = False
+            for model_path in models_to_try:
                 try:
-                    model_fallback = genai.GenerativeModel(model_name='gemini-1.5-flash', system_instruction=sys_prompt)
-                    response = model_fallback.generate_content(user_input)
-                    st.write("*(تم التبديل لبروتوكول 1.5 المستقر)*")
+                    model = genai.GenerativeModel(model_name=model_path, system_instruction=sys_msg)
+                    response = model.generate_content(user_input)
                     st.write(response.text)
                     st.session_state.history.append({"role": "assistant", "content": response.text})
-                except Exception as e2:
-                    st.error(f"⚠️ عائق تقني: {str(e2)}")
+                    success = True
+                    break # توقف عند أول موديل ينجح
+                except Exception as e:
+                    continue # إذا فشل (كوتا أو 404)، جرب الموديل اللي بعده في القائمة
+            
+            if not success:
+                st.error("⚠️ جميع الموديلات السيادية مشغولة حالياً، يرجى الانتظار دقيقة.")
 else:
     st.warning("أدخل المفتاح في Secrets يا راشد")
