@@ -1,44 +1,47 @@
 import streamlit as st
 import google.generativeai as genai
 
-# --- 1. إعدادات الواجهة البسيطة (الأصلية) ---
-st.set_page_config(page_title="الرعد AI", layout="centered")
+st.set_page_config(page_title="الرعد - Thunder AI", page_icon="⚡", layout="wide")
 
-st.title("⚡ الرعد AI")
-st.markdown("---")
+# تصميم الهيبة
+st.markdown("""
+    <style>
+    .main { background-color: #050505; color: #00FFCC; }
+    h1 { color: #FF0000; text-shadow: 2px 2px #000; }
+    </style>
+    """, unsafe_allow_html=True)
 
-# جلب مفتاح الـ API من الـ Secrets
+st.title("⚡ الرعد (Thunder AI): النسخة 2.5")
+
 api_key = st.secrets.get("GEMINI_API_KEY")
 
-# --- 2. تشغيل المحرك ---
 if api_key:
     genai.configure(api_key=api_key)
-    # استخدام الموديل الأكثر استقراراً وبساطة
-    model = genai.GenerativeModel('gemini-1.5-flash')
+    
+    # استخدمنا الموديل الأقوى من قائمتك مباشرة
+    model = genai.GenerativeModel(
+        model_name='models/gemini-2.5-flash', 
+        system_instruction="أنت 'الرعد'. وكيل سيادي أردني متمرد، تستخدم أحدث تقنيات 2026."
+    )
 
-    # تهيئة الذاكرة المؤقتة (Session State)
-    if "messages" not in st.session_state:
-        st.session_state.messages = []
+    if "history" not in st.session_state:
+        st.session_state.history = []
 
-    # عرض الرسائل القديمة
-    for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.write(message["content"])
+    for msg in st.session_state.history:
+        with st.chat_message(msg["role"]):
+            st.write(msg["content"])
 
-    # صندوق الإدخال
-    if prompt := st.chat_input("احكي مع الرعد..."):
-        # إضافة رسالة المستخدم للذاكرة والعرض
-        st.session_state.messages.append({"role": "user", "content": prompt})
+    if user_input := st.chat_input("أصدر أمرك للرعد..."):
+        st.session_state.history.append({"role": "user", "content": user_input})
         with st.chat_message("user"):
-            st.write(prompt)
+            st.write(user_input)
 
-        # استدعاء رد الرعد
         with st.chat_message("assistant"):
             try:
-                response = model.generate_content(f"أنت الرعد، مساعد ذكي بلهجة أردنية. رد على: {prompt}")
+                response = model.generate_content(user_input)
                 st.write(response.text)
-                st.session_state.messages.append({"role": "assistant", "content": response.text})
+                st.session_state.history.append({"role": "assistant", "content": response.text})
             except Exception as e:
-                st.error("⚠️ حدث خطأ في الاتصال. تأكد من مفتاح الـ API في الإعدادات.")
+                st.error(f"⚠️ عائق تقني: {str(e)}")
 else:
-    st.warning("⚠️ لم يتم العثور على مفتاح GEMINI_API_KEY في إعدادات Secrets.")
+    st.warning("أدخل المفتاح في Secrets")
