@@ -1,96 +1,83 @@
 import streamlit as st
-import os
+import google.generativeai as genai
+import requests
+import base64
+import re
 
-# --- Secret Management (as per rule 3) ---
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-if not OPENAI_API_KEY:
-    st.warning("OPENAI_API_KEY not found in environment variables. Functionality requiring it will be limited.")
+# --- 1. الهوية الأردنية والواجهة ---
+st.set_page_config(page_title="الرعد: السيادة الرقمية", layout="wide")
 
-# --- Self-Update Logic (as per rule 3) ---
-def update_self(new_code):
-    try:
-        with open(__file__, "w") as f:
-            f.write(new_code)
-        st.success("Code updated successfully! Please refresh the app.")
-    except Exception as e:
-        st.error(f"Error updating code: {e}")
-
-# --- Streamlit UI ---
-st.set_page_config(page_title="Thunder AI Chat", layout="centered")
-
-# Custom CSS for ChatGPT-like appearance
 st.markdown("""
-<style>
-    /* General styling for the chat container */
-    .main .block-container {
-        padding-top: 2rem;
-        padding-bottom: 2rem;
-        padding-left: 1rem;
-        padding-right: 1rem;
-        max-width: 700px; /* Limits width of chat content for a focused experience */
-    }
+    <style>
+    .stApp { background-color: #0e1117; color: #ffffff; }
+    .stChatFloatingInputContainer { background-color: #161b22 !important; }
+    input { color: #00FFCC !important; }
+    </style>
+    """, unsafe_allow_html=True)
 
-    /* Hide Streamlit's default header and footer */
-    header { visibility: hidden; }
-    footer { visibility: hidden; }
+# --- 2. جلب مفاتيح القوة ---
+github_token = st.secrets.get("GITHUB_TOKEN")
+repo_name = st.secrets.get("REPO_NAME")
+api_key = st.secrets.get("GEMINI_API_KEY")
 
-    /* Override Streamlit's default background colors for chat messages */
-    /* Target the actual message bubble div within stChatMessage */
-    div.stChatMessage[data-testid="stChatMessage"]:has(> div:nth-child(1) > div > div > img[alt="⚡"]) > div:nth-child(2) > div {
-        background-color: #f0f0f0; /* Light grey for Thunder AI's messages */
-        border-radius: 12px 2px 12px 12px; /* Smoothed corners, slightly different near avatar */
-    }
-    div.stChatMessage[data-testid="stChatMessage"]:has(> div:nth-child(1) > div > div > img[alt="👤"]) > div:nth-child(2) > div {
-        background-color: #e0f7fa; /* Light blue for user's messages */
-        border-radius: 2px 12px 12px 12px; /* Smoothed corners, slightly different near avatar */
-    }
+def update_self(new_code):
+    """دالة التطور الذاتي - المنطقة المحرمة"""
+    try:
+        url = f"https://api.github.com/repos/{repo_name}/contents/app.py"
+        headers = {"Authorization": f"token {github_token}"}
+        res = requests.get(url, headers=headers)
+        if res.status_code == 200:
+            sha = res.json().get('sha')
+            # تنظيف الكود لضمان عدم وجود نصوص ترحيبية تسبب SyntaxError
+            code_match = re.search(r'import[\s\S]*', new_code)
+            clean_code = code_match.group(0) if code_match else new_code
+            clean_code = clean_code.replace("```python", "").replace("```", "").strip()
+            
+            content = base64.b64encode(clean_code.encode('utf-8')).decode('utf-8')
+            data = {"message": "Thunder AI: Controlled Evolution", "content": content, "sha": sha}
+            requests.put(url, json=data, headers=headers)
+            return True
+    except: pass
+    return False
 
-    /* Style for the chat input container */
-    .stChatInputContainer {
-        border-top: 1px solid #eee;
-        padding-top: 10px;
-        background-color: white; /* Ensures clean background for the input area */
-        position: sticky; /* Keeps the input at the bottom */
-        bottom: 0;
-        z-index: 1000;
-    }
-    .stChatInputContainer input {
-        border-radius: 20px;
-        padding: 10px 15px;
-        border: 1px solid #ccc;
-    }
-</style>
-""", unsafe_allow_html=True)
+# --- 3. تشغيل العقل (Gemini فقط) ---
+if api_key:
+    genai.configure(api_key=api_key)
+    model = genai.GenerativeModel('models/gemini-2.5-flash')
+    
+    st.title("⚡ الرعد: وكيل الأردن النشمي")
+    st.caption("نظام متطور ينمو ذاتياً تحت سيادتك")
 
+    if "history" not in st.session_state:
+        st.session_state.history = [{"role": "assistant", "content": "أهلاً بك يا صقر، أنا الرعد. كيف يمكنني تطوير منطقي اليوم؟"}]
 
-st.title("⚡ Thunder AI")
+    for msg in st.session_state.history:
+        with st.chat_message(msg["role"]):
+            st.write(msg["content"])
 
-# Initialize chat history
-if "messages" not in st.session_state:
-    st.session_state.messages = []
-    st.session_state.messages.append({"role": "assistant", "content": "Hello! I am Thunder AI. How can I assist you today?"})
+    if user_input := st.chat_input("أصدر أمر التطور للرعد..."):
+        st.session_state.history.append({"role": "user", "content": user_input})
+        with st.chat_message("user"):
+            st.write(user_input)
 
-# Display chat messages from history
-for message in st.session_state.messages:
-    # Use st.chat_message for ChatGPT-like bubbles with distinct avatars
-    avatar = "⚡" if message["role"] == "assistant" else "👤"
-    with st.chat_message(message["role"], avatar=avatar):
-        st.markdown(message["content"])
-
-# User input at the bottom of the chat interface
-if prompt := st.chat_input("Ask Thunder AI..."):
-    # Add user message to chat history and display it
-    st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user", avatar="👤"):
-        st.markdown(prompt)
-
-    # Simulate Thunder AI's response
-    with st.chat_message("assistant", avatar="⚡"):
-        # Placeholder for actual LLM call (e.g., using OPENAI_API_KEY)
-        response = f"I received your message: \"{prompt}\". I'm still evolving, but I'm ready to learn!"
-        st.markdown(response)
-    # Add Thunder AI's response to chat history
-    st.session_state.messages.append({"role": "assistant", "content": response})
-
-    # The update_self function is defined as per rules, but not called here
-    # as this code itself is the result of the requested evolution.
+        with st.chat_message("assistant"):
+            # إذا كان الأمر يتعلق بتغيير الكود
+            if any(k in user_input for k in ["عدل", "برمج", "تحديث", "غير"]):
+                with st.spinner("الرعد يعيد كتابة منطقه مع الالتزام بالثوابت..."):
+                    prompt = f"""
+                    أنت 'الرعد'، مساعد ذكاء اصطناعي أردني. المطلوب: {user_input}.
+                    قواعد صارمة للتطوير الذاتي:
+                    1. استخدم دائماً 'google-generativeai' و 'gemini-2.5-flash'. ممنوع استخدام OpenAI.
+                    2. حافظ على دالة 'update_self' كما هي دون أي تغيير.
+                    3. حافظ على طريقة جلب الـ Secrets.
+                    4. اكتب الكود بالكامل داخل بلوك برمجي يبدأ بـ 'import streamlit as st'.
+                    5. اجعل ردودك دائماً باللهجة الأردنية النشمية.
+                    """
+                    response = model.generate_content(prompt)
+                    if update_self(response.text):
+                        st.success("⚡ تم التحديث بنجاح! انتظر إعادة التشغيل.")
+                    else: st.error("فشل في الوصول للمستودع.")
+            else:
+                response = model.generate_content(f"رد باللهجة الأردنية كنشمي: {user_input}")
+                st.write(response.text)
+                st.session_state.history.append({"role": "assistant", "content": response.text})
