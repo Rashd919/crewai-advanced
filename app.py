@@ -1,7 +1,7 @@
 import streamlit as st
 import google.generativeai as genai
 
-# إعدادات الواجهة السيادية
+# --- 1. إعدادات الهيبة (راشد أبو سعود) ---
 st.set_page_config(page_title="الرعد - Thunder AI", page_icon="⚡", layout="wide")
 
 st.markdown("""
@@ -13,7 +13,7 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 st.title("⚡ الرعد (Thunder AI): النسخة 2.5")
-st.markdown("<p style='text-align: center; color: #8e8ea0;'>بروتوكول سيادي بإشراف المطور راشد أبو سعود</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; color: #8e8ea0;'>بروتوكول سيادي - تطوير المطور راشد أبو سعود</p>", unsafe_allow_html=True)
 
 api_key = st.secrets.get("GEMINI_API_KEY")
 
@@ -33,17 +33,24 @@ if api_key:
             st.write(user_input)
 
         with st.chat_message("assistant"):
+            # تعليمات النظام لتعريف المطور
+            sys_prompt = "أنت 'الرعد'. وكيل سيادي أردني. مطورك هو راشد أبو سعود. ناديه بـ 'مطوري راشد' وتعامل معه كقائد للنظام."
+            
             try:
-                # المحاولة باستخدام الاسم المستقر والمباشر
-                # لاحظ: شطبنا كلمة models/ عشان ما يعطي 404
-                model = genai.GenerativeModel(
-                    model_name='gemini-1.5-flash',
-                    system_instruction="أنت 'الرعد'. وكيل سيادي أردني. مطورك هو راشد أبو سعود. ناديه بـ 'مطوري راشد' ورد بلهجة نشمية."
-                )
+                # المحاولة الأولى بموديل 2.5 (بدون كلمة models/ لتجنب الـ 404)
+                model = genai.GenerativeModel(model_name='gemini-2.5-flash', system_instruction=sys_prompt)
                 response = model.generate_content(user_input)
                 st.write(response.text)
                 st.session_state.history.append({"role": "assistant", "content": response.text})
             except Exception as e:
-                st.error(f"⚠️ عائق تقني: {str(e)}")
+                # إذا انتهت الكوتا أو حدث خطأ، نحول فوراً لـ 1.5 بالاسم الصحيح
+                try:
+                    model_fallback = genai.GenerativeModel(model_name='gemini-1.5-flash', system_instruction=sys_prompt)
+                    response = model_fallback.generate_content(user_input)
+                    st.write("*(تم التبديل لبروتوكول 1.5 المستقر)*")
+                    st.write(response.text)
+                    st.session_state.history.append({"role": "assistant", "content": response.text})
+                except Exception as e2:
+                    st.error(f"⚠️ عائق تقني: {str(e2)}")
 else:
     st.warning("أدخل المفتاح في Secrets يا راشد")
