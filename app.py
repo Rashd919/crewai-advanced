@@ -1,80 +1,145 @@
 import streamlit as st
-import google.generativeai as genai
+eai as genai
 import requests
-import base64
+importimport google.generati
+v base64
 import re
 
-# --- 1. تصميم واجهة ChatGPT الاحترافية المظلمة ---
-st.set_page_config(page_title="الرعد v2.0", layout="wide")
+# --- 1. هندسة الواجهة الكاملة (ChatGPT Sidebar & UI) ---
+te="expanded")
 
 st.markdown("""
     <style>
-    .stApp { background-color: #212121; color: #ececf1; }
-    .stChatMessage { border-radius: 15px; padding: 18px; margin-bottom: 12px; }
-    [data-testid="stChatMessageAssistant"] { background-color: #444654; border: 1px solid #565869; }
-    [data-testid="stChatMessageUser"] { background-color: #212121; border: 1px solid #565869; }
-    .stChatFloatingInputContainer { background-color: #343541 !important; border-top: 1px solid #565869; }
-    input { color: #ffffff !important; background-color: #40414f !important; border-radius: 10px !important; }
-    #MainMenu, footer, header {visibility: hidden;}
+    /* ألوان ChatGPT الأصلية */
+    .stApp { bacst.set_page_config(page_title="Thunder AI", layout="wide", initial_sidebar_st
+akground-color: #343541; color: #ececf1; }
+    
+    /* الشريط الجانبي */
+    section[data-testid="stSidebar"] {
+        background-color: #202123 !important;
+        width: 260px !important;
+4d4f;    }
+    
+    /* زر "محادثة جديدة" في الشريط الجانبي */
+    .stButton>button {
+        width: 100%;
+        background-color: transparent;
+        color: white;
+        border: 1px solid #4
+d
+        border-radius: 5px;
+        text-align: left;
+        padding: 10px;
+        transition: 0.3s;
+    }
+    .stButton>button:hover {
+        background-color: #2b2c2f;
+        border-color: #4d4d4f;
+: 0px    }
+
+    /* إخفاء الهيدر */
+    header { visibility: hidden; }
+
+    /* تنسيق المحادثة */
+    .stChatMessage { 
+        padding: 2rem 15% !important; 
+        margin: 0px !important; 
+        border-radiu
+s !important;
+    }
+    [data-testid="stChatMessageAssistant"] { background-color: #444654; }
+    [data-testid="stChatMessageUser"] { background-color: #343541; }
+
+    /* صندوق الكتابة العائم المحاذي للمنتصف */
+    .stChatFloatingInputContainer { 
+
+        background-color: #40414f !important;        background-color: #343541 !important; 
+        bottom: 40px !important;
+        padding: 0 15% !important;
+    }
+    
+    div[data-testid="stChatInput"] {
+        border-radius: 10px !important;
+        border: 1px solid #565869 !important
+;
+        box-shadow: 0 0 15px rgba(0,0,0,0.1) !important;
+    }
+
+    /* أيقونات المستخدم والمساعد */
+    .stAvatar { border-radius: 2px !important; }
     </style>
     """, unsafe_allow_html=True)
 
-# جلب المفاتيح من الـ Secrets
+# المفاتيح السيادية
 github_token = st.secrets.get("GITHUB_TOKEN")
 repo_name = st.secrets.get("REPO_NAME")
-api_key = st.secrets.get("GEMINI_API_KEY")
+0:
+            sha = res.json().get('sha')api_key = st.secrets.get("GEMINI_API_KEY")
 
 def apply_direct_update(new_code):
-    """دالة استقبال النبضات البرمجية من Gemini"""
     try:
         url = f"https://api.github.com/repos/{repo_name}/contents/app.py"
         headers = {"Authorization": f"token {github_token}"}
         res = requests.get(url, headers=headers)
-        if res.status_code == 200:
-            sha = res.json().get('sha')
-            # استخراج الكود البرمجي الصافي فقط
+        if res.status_code == 2
+0
             code_match = re.search(r'import[\s\S]*', new_code)
             clean_code = code_match.group(0) if code_match else new_code
-            clean_code = clean_code.replace("```python", "").replace("```", "").strip()
-            
-            # منع التحديث إذا كان الكود فارغاً (لتجنب الشاشة السوداء)
+            clean_code = clean_code.replace("", "").replace("", "").strip()
             if len(clean_code) < 50: return False
-            
             content = base64.b64encode(clean_code.encode('utf-8')).decode('utf-8')
-            data = {"message": "Final ChatGPT UI Fix", "content": content, "sha": sha}
+ت) ---
+    with st.sidebar:
+        st.markdown("<h3 style='color: white;'>Thunder AI</h3>", unsaf            data = {"message": "UI Evolution: Full ChatGPT Clone", "content": content, "sha": sha}
             requests.put(url, json=data, headers=headers)
             return True
     except: pass
     return False
 
-# --- 2. تشغيل العقل الذكي ---
 if api_key:
     genai.configure(api_key=api_key)
     model = genai.GenerativeModel('models/gemini-2.5-flash')
-    
-    st.markdown("<h2 style='text-align: center; color: #10a37f;'>⚡ Thunder AI v2.0</h2>", unsafe_allow_html=True)
 
+    # --- الشريط الجانبي (الأدو
+اe_allow_html=True)
+        if st.button("＋ New Chat"):
+            st.session_state.history = []
+            st.rerun()
+        
+        st.markdown("---")
+        st.caption("History (Simulated)")
+        st.markdown("<p style='font-size: 0.8rem; color: #8e8ea0;'>• اليوم: تطوير الواجهة</p>", unsafe_allow_html=True)
+        st.markdown("<p style='font-size: 0.8rem; color: #8e8ea0;'>• أمس: إعداد الجسر البرمجي</p>", unsafe_allow_html=True)
+        
+        st.sidebar.markdown("---")
+e)
+
+    for msg in st.session_state.        if st.button("⚙️ Settings"):
+            st.info("إعدادات النظام السيادي قيد التطوير.")
+
+    # عرض المحادثة
     if "history" not in st.session_state:
         st.session_state.history = []
 
-    for msg in st.session_state.history:
+    if not st.session_state.history:
+        st.markdown("<h1 style='text-align: center; margin-top: 10rem; color: #d1d5db;'>Thunder AI</h1>", unsafe_allow_html=True)
+        st.markdown("<p style='text-align: center; color: #8e8ea0;'>بماذا يمكنني مساعدتك اليوم؟</p>", unsafe_allow_html=Tr
+uhistory:
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
 
-    if user_input := st.chat_input("تكلم مع الرعد..."):
+    # صندوق الإدخال
+    if user_input := st.chat_input("Send a message..."):
         st.session_state.history.append({"role": "user", "content": user_input})
         with st.chat_message("user"):
             st.markdown(user_input)
 
         with st.chat_message("assistant"):
-            # إذا أرسلت كوداً مع كلمة تحديث_مباشر
             if user_input.startswith("تحديث_مباشر") and "import" in user_input:
-                with st.spinner("جاري مزامنة العقل الاستراتيجي..."):
-                    if apply_direct_update(user_input):
-                        st.success("✅ تم تحديث النظام! انتظر إعادة التشغيل.")
-                    else: st.error("❌ الكود غير مكتمل أو هناك خطأ.")
+                if apply_direct_update(user_input):
+                    st.success("✅ تمت المزامنة بنجاح!")
+                else: st.error("❌ فشل التحديث.")
             else:
-                # رد طبيعي باللهجة الأردنية
-                response = model.generate_content(f"أنت الرعد، مساعد ذكي بلهجة أردنية نشمية. رد على: {user_input}")
+                response = model.generate_content(f"أنت الرعد، مساعد ذكي بلهجة أردنية. رد باحترافية على: {user_input}")
                 st.markdown(response.text)
                 st.session_state.history.append({"role": "assistant", "content": response.text})
