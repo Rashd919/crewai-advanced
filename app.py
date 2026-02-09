@@ -1,7 +1,7 @@
 import streamlit as st
 import google.generativeai as genai
 
-# إعدادات الواجهة السيادية
+# إعدادات الواجهة السيادية (نسخة راشد أبو سعود)
 st.set_page_config(page_title="الرعد - Thunder AI", page_icon="⚡", layout="wide")
 
 st.markdown("""
@@ -33,17 +33,30 @@ if api_key:
             st.write(user_input)
 
         with st.chat_message("assistant"):
-            try:
-                # استخدمنا الموديل اللي كوتا تبعته بتتحمل ضغطك يا راشد
-                model = genai.GenerativeModel(
-                    model_name='gemini-1.5-flash',
-                    system_instruction="أنت 'الرعد'. وكيل سيادي أردني متمرد. مطورك ومؤسسك هو راشد أبو سعود. ناديه بـ 'مطوري راشد' دائماً."
-                )
-                response = model.generate_content(user_input)
-                st.write(response.text)
-                st.session_state.history.append({"role": "assistant", "content": response.text})
-            except Exception as e:
-                # لو صار أي ضغط، بنعطيه تنبيه بسيط
-                st.error(f"⚠️ النظام تحت الضغط حالياً، انتظر ثواني يا مطوري راشد. الخطأ: {str(e)}")
+            # تعليمات النظام الأساسية المحفورة باسمك
+            sys_msg = "أنت 'الرعد'. وكيل سيادي أردني. مطورك هو راشد أبو سعود. ناديه بـ 'مطوري راشد'."
+            
+            # قائمة الموديلات التي أثبتت فعاليتها في صور الفحص الخاصة بك (بدون بادئة models/)
+            # هذا الترتيب يضمن أنه إذا انتهت كوتا 2.0 ينتقل لـ 1.5 تلقائياً
+            available_models = ['gemini-2.0-flash', 'gemini-1.5-flash']
+            
+            success = False
+            for model_name in available_models:
+                try:
+                    model = genai.GenerativeModel(model_name=model_name, system_instruction=sys_msg)
+                    response = model.generate_content(user_input)
+                    st.write(response.text)
+                    st.session_state.history.append({"role": "assistant", "content": response.text})
+                    success = True
+                    break
+                except Exception as e:
+                    if "429" in str(e): # إذا كانت المشكلة ضغط حصة (Quota)
+                        continue
+                    else: # إذا كان خطأ آخر
+                        st.error(f"⚠️ خلل في بروتوكول {model_name}: {str(e)}")
+                        break
+            
+            if not success:
+                st.warning("⚠️ يا مطوري راشد، جميع البروتوكولات تحت ضغط الكوتا حالياً. انتظر 30 ثانية.")
 else:
-    st.warning("⚠️ تأكد من المفتاح في Secrets.")
+    st.warning("⚠️ المفتاح غير مبرمج في الإعدادات.")
