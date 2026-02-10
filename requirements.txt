@@ -1,12 +1,4 @@
 streamlit
-groq
-PyGithub
-duckduckgo-search
-st-autorefresh
-google-genai
-scikit-learn
-scipy
-plotly
-pyTelegramBotAPI
 instaloader
 requests
+st-autorefresh
