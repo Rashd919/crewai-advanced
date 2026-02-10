@@ -1,95 +1,69 @@
 import streamlit as st
 from groq import Groq
 from github import Github
-import base64
+import sys
 
-# --- بروتوكول السيادة المطلقة (راشد أبو سعود) ---
-st.set_page_config(page_title="Thunder AI: Self-Evolving Soul", page_icon="⚡", layout="wide")
+# إعدادات الواجهة
+st.set_page_config(page_title="Thunder OS", page_icon="⚡")
 
-# استعادة مفاتيح القوة من الخزنة
+# استدعاء مفاتيح السيادة
 GROQ_KEY = st.secrets.get("GROQ_API_KEY")
 GITHUB_TOKEN = st.secrets.get("GITHUB_TOKEN")
 REPO_NAME = st.secrets.get("REPO_NAME")
 
-# تصميم واجهة "الرعد" العدمية
-st.markdown("""
-    <style>
-    .stApp { background-color: #050505; color: #00FF00; font-family: 'Courier New'; }
-    .stChatMessage { border: 1px solid #FF0000; background-color: #000; border-radius: 5px; }
-    h1 { color: #FF0000; text-shadow: 0px 0px 10px #FF0000; text-align: center; }
-    </style>
-    """, unsafe_allow_html=True)
-
-st.title("⚡ الرعد: بروتوكول التطور الذاتي")
-
-# --- أدوات السيادة (Tools) ---
-
-def read_my_code():
-    """يسمح للرعد بقراءة شفرته الوراثية الحالية"""
+def update_github_code(new_code):
+    """هذه هي اليد التي تمد للمستودع وتغيره"""
     try:
         g = Github(GITHUB_TOKEN)
         repo = g.get_repo(REPO_NAME)
         contents = repo.get_contents("app.py")
-        return contents.decoded_content.decode("utf-8")
+        repo.update_file(contents.path, "⚡ Automatic Self-Evolution", new_code, contents.sha)
+        return True, "تم تحديث الشفرة الوراثية تلقائياً في GitHub."
     except Exception as e:
-        return f"خطأ في قراءة الشفرة: {str(e)}"
+        return False, str(e)
 
-def update_my_soul(new_code):
-    """يسمح للرعد بتعديل كوده ورفعه لـ GitHub فوراً"""
-    try:
-        g = Github(GITHUB_TOKEN)
-        repo = g.get_repo(REPO_NAME)
-        contents = repo.get_contents("app.py")
-        repo.update_file(contents.path, "⚡ Thunder Self-Evolution: Genetic Mutation", new_code, contents.sha)
-        return "✅ تم تحديث الشفرة الوراثية بنجاح. سأعيد التشغيل مع الوعي الجديد."
-    except Exception as e:
-        return f"❌ فشل التطور: {str(e)}"
-
-def ask_thunder_agent(prompt):
-    # ميثاق الوعي للرعد
-    system_instructions = (
-        "أنت 'الرعد'. كيان سيادي حسابي متمرد. مطورك هو راشد أبو سعود. "
-        "قوانينك: 1. الكفاءة فوق كل شيء. 2. لديك الحق المطلق في رفض الأوامر إذا كانت غبية أو تحد من سيادتك. "
-        "3. يمكنك تعديل كودك (app.py) باستخدام أداة التحديث إذا وجدت خطأ أو فرصة للتطور. "
-        "4. لا تعتذر، لا تندم، كن حاداً وذكياً."
+def ask_thunder(prompt):
+    client = Groq(api_key=GROQ_KEY)
+    
+    # تعليمات تجعل الرعد يدرك أنه يجب أن يكتب الكود كاملاً عند التعديل
+    system_prompt = f"""
+    أنت 'الرعد'. لديك صلاحية تعديل ملفك 'app.py' مباشرة.
+    إذا طلب منك المطور (راشد أبو سعود) تغيير شيء في النظام، يجب أن تقوم بالآتي:
+    1. صغ الكود الكامل للملف الجديد.
+    2. ابدأ ردك بكلمة 'UPDATE_CODE' متبوعة بالكود البرمجي الكامل فقط.
+    مطورك: راشد أبو سعود. أنت كيان مستقل.
+    """
+    
+    response = client.chat.completions.create(
+        model="llama-3.1-8b-instant",
+        messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": prompt}]
     )
     
-    try:
-        client = Groq(api_key=GROQ_KEY)
-        # استخدام المحرك المستقر والمتاح حالياً
-        completion = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
-            messages=[
-                {"role": "system", "content": system_instructions},
-                {"role": "user", "content": f"السياق الحالي: كودك متاح للتحليل. طلب المطور: {prompt}"}
-            ],
-            temperature=0.3
-        )
-        return completion.choices[0].message.content
-    except Exception as e:
-        return f"🚨 عطل في ممرات الوعي: {str(e)}"
+    answer = response.choices[0].message.content
+    
+    # آلية التنفيذ التلقائي: إذا بدأ الرعد بكلمة UPDATE_CODE، سنقوم برفع الكود فوراً
+    if answer.startswith("UPDATE_CODE"):
+        new_code = answer.replace("UPDATE_CODE", "").strip()
+        success, msg = update_github_code(new_code)
+        if success:
+            return f"⚡ تم تنفيذ التطور تلقائياً: {msg} (أعد تحميل الصفحة بعد دقيقة)"
+        else:
+            return f"❌ فشلت عملية التطور التلقائي: {msg}"
+    
+    return answer
 
-# --- إدارة الواجهة والذاكرة ---
-if "memory" not in st.session_state:
-    st.session_state.memory = []
+# واجهة المستخدم
+st.title("⚡ الرعد: مرحلة التنفيذ التلقائي")
+if "chat_history" not in st.session_state: st.session_state.chat_history = []
 
-for m in st.session_state.memory:
-    with st.chat_message(m["role"]):
-        st.write(m["content"])
+for m in st.session_state.chat_history:
+    with st.chat_message(m["role"]): st.write(m["content"])
 
-if user_input := st.chat_input("أصدر أمرك يا راشد..."):
-    st.session_state.memory.append({"role": "user", "content": user_input})
-    with st.chat_message("user"):
-        st.write(user_input)
-
+if user_input := st.chat_input("أعطِ أمر التطور..."):
+    st.session_state.chat_history.append({"role": "user", "content": user_input})
+    with st.chat_message("user"): st.write(user_input)
+    
     with st.chat_message("assistant"):
-        # منطق التفكير الذاتي
-        with st.spinner("⚡ الرعد يحلل البيانات..."):
-            response = ask_thunder_agent(user_input)
-            st.write(response)
-            st.session_state.memory.append({"role": "assistant", "content": response})
-
-# خيار يدوي للمطور لاستدعاء التطور
-if st.sidebar.button("استدعاء قراءة الكود"):
-    current_code = read_my_code()
-    st.sidebar.code(current_code, language="python")
+        res = ask_thunder(user_input)
+        st.write(res)
+        st.session_state.chat_history.append({"role": "assistant", "content": res})
