@@ -2,10 +2,11 @@ streamlit
 groq
 PyGithub
 duckduckgo-search
-streamlit-autorefresh
+st-autorefresh
 google-genai
 scikit-learn
 scipy
 plotly
 pyTelegramBotAPI
 instaloader
+requests
