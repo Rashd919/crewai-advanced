@@ -1,4 +1,4 @@
-Import streamlit as st
+import streamlit as st
 from groq import Groq
 from github import Github
 from streamlit_autorefresh import st_autorefresh
