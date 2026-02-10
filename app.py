@@ -1,59 +1,59 @@
 import streamlit as st
 import google.generativeai as genai
+import openai
 
-# --- 1. إعدادات الهيبة (المطور راشد أبو سعود) ---
-st.set_page_config(page_title="Thunder AI 2.5", page_icon="⚡", layout="wide")
+st.set_page_config(page_title="Thunder AI - Protected", page_icon="⚡", layout="wide")
 
-st.markdown("""
-    <style>
-    .stApp { background-color: #050505; color: #00FFCC; }
-    h1 { color: #00FFCC; text-shadow: 2px 2px #FF0000; text-align: center; }
-    .stChatMessage { border: 1px solid #00FFCC; border-radius: 10px; background-color: #0a0a0a; }
-    </style>
-    """, unsafe_allow_html=True)
+# --- استدعاء المفاتيح من الخزنة السرية (Secrets) ---
+GEMINI_KEY = st.secrets.get("GEMINI_API_KEY")
+GROK_KEY = st.secrets.get("GROK_API_KEY")
 
-st.title("⚡ الرعد (Thunder AI)")
-st.markdown("<p style='text-align: center; color: #8e8ea0;'>بروتوكول سيادي | تطوير: راشد أبو سعود</p>", unsafe_allow_html=True)
+def ask_grok(prompt):
+    if not GROK_KEY: return "مفتاح Grok غير مبرمج."
+    try:
+        client = openai.OpenAI(api_key=GROK_KEY, base_url="https://api.x.ai/v1")
+        response = client.chat.completions.create(
+            model="grok-beta",
+            messages=[
+                {"role": "system", "content": "أنت 'الرعد'. مطورك راشد أبو سعود."},
+                {"role": "user", "content": prompt}
+            ]
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        return f"عائق في Grok: {str(e)}"
 
-api_key = st.secrets.get("GEMINI_API_KEY")
+def ask_gemini(prompt):
+    if not GEMINI_KEY: return None
+    genai.configure(api_key=GEMINI_KEY)
+    # نستخدم الموديلات المضمونة من قائمة فحصك
+    for m in ['gemini-1.5-flash', 'gemini-2.0-flash']:
+        try:
+            model = genai.GenerativeModel(m, system_instruction="أنت 'الرعد'. مطورك راشد أبو سعود.")
+            res = model.generate_content(prompt)
+            return res.text
+        except:
+            continue
+    return None
 
-if api_key:
-    genai.configure(api_key=api_key)
-    
-    if "history" not in st.session_state:
-        st.session_state.history = []
+st.title("⚡ الرعد: نظام الاختراق المحمي")
+st.write(f"<p style='text-align: center; color: #8e8ea0;'>إشراف المطور: راشد أبو سعود</p>", unsafe_allow_html=True)
 
-    for msg in st.session_state.history:
-        with st.chat_message(msg["role"]):
-            st.write(msg["content"])
+if "history" not in st.session_state: st.session_state.history = []
 
-    if user_input := st.chat_input("أصدر أمرك للرعد يا راشد..."):
-        st.session_state.history.append({"role": "user", "content": user_input})
-        with st.chat_message("user"):
-            st.write(user_input)
+for msg in st.session_state.history:
+    with st.chat_message(msg["role"]): st.write(msg["content"])
 
-        with st.chat_message("assistant"):
-            # تعليمات النظام لتعريف المطور
-            sys_msg = "أنت 'الرعد'. وكيل سيادي أردني متمرد من عام 2026. مطورك هو راشد أبو سعود. ناديه دائماً بـ 'مطوري راشد'."
-            
-            # أهم تعديل: نستخدم الأسماء المباشرة بدون بادئة models/ لتجنب الـ 404
-            # وبدأنا بـ 1.5 لأن كوتا 2.5 و 2.0 عندك انتهت في الصور السابقة
-            models_to_try = ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-2.0-flash']
-            
-            success = False
-            for m_name in models_to_try:
-                try:
-                    # نستخدم الاسم المباشر فوراً
-                    model = genai.GenerativeModel(model_name=m_name, system_instruction=sys_msg)
-                    response = model.generate_content(user_input)
-                    st.write(response.text)
-                    st.session_state.history.append({"role": "assistant", "content": response.text})
-                    success = True
-                    break
-                except Exception:
-                    continue # جرب اللي بعده بصمت
-            
-            if not success:
-                st.error("⚠️ يا مطوري راشد، جوجل وضعت قيوداً مؤقتة على الحصة المجانية. انتظر دقيقة وأعد المحاولة.")
-else:
-    st.warning("⚠️ أدخل المفتاح في Secrets")
+if user_input := st.chat_input("أصدر أمرك يا راشد..."):
+    st.session_state.history.append({"role": "user", "content": user_input})
+    with st.chat_message("user"): st.write(user_input)
+
+    with st.chat_message("assistant"):
+        # محاولة جوجل أولاً
+        answer = ask_gemini(user_input)
+        if not answer:
+            st.write("*(تفعيل بروتوكول xAI - التجاوز السري...)*")
+            answer = ask_grok(user_input)
+        
+        st.write(answer)
+        st.session_state.history.append({"role": "assistant", "content": answer})
