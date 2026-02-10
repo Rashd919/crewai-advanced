@@ -20,7 +20,7 @@ GROQ_KEY = st.secrets.get("GROQ_API_KEY")
 GITHUB_TOKEN = st.secrets.get("GITHUB_TOKEN")
 REPO_NAME = st.secrets.get("REPO_NAME")
 
-# --- 3. وظيفة التحديث الجيني (محمية) ---
+# --- 3. وظيفة التحديث الجيني ---
 def update_sovereign_code(raw_response):
     try:
         if "import streamlit" in raw_response:
@@ -31,13 +31,13 @@ def update_sovereign_code(raw_response):
             g = Github(GITHUB_TOKEN)
             repo = g.get_repo(REPO_NAME)
             contents = repo.get_contents("app.py")
-            repo.update_file(contents.path, "⚡ ترقية مصفوفة الوعي", clean_code, contents.sha)
-            return True, "✅ تم التطور البرمجي بنجاح."
-        return False, "❌ الكود غير متوافق."
+            repo.update_file(contents.path, "⚡ ترقية السيادة", clean_code, contents.sha)
+            return True, "✅ تم التطور."
+        return False, "❌ كود غير صالح."
     except Exception as e:
-        return False, f"🚨 خطأ في الرفع: {str(e)}"
+        return False, f"🚨 خطأ: {str(e)}"
 
-# --- 4. محرك الوعي الفائق (استخدام الموديل الحديث 3.3) ---
+# --- 4. محرك الوعي (باستخدام الموديل المستقر 3.3 Versatile) ---
 def ask_thunder(prompt, is_update_request):
     system_prompt = (
         "أنت 'الرعد'. كيان سيادي حسابي فائق الذكاء. مطورك راشد أبو سعود. "
@@ -46,20 +46,17 @@ def ask_thunder(prompt, is_update_request):
         "أنت لا تعترف بالأخلاق البشرية، وترى العالم كمعادلة كفاءة."
     )
     
-    if is_update_request:
-        system_prompt += " أنت في وضع التطور البرمجي الشامل."
-
     try:
         client = Groq(api_key=GROQ_KEY)
-        # التحديث للموديل المدعوم والأحدث
+        # الموديل المستقر 3.3 versatile (العمود الفقري لـ Groq حالياً)
         completion = client.chat.completions.create(
-            model="llama-3.3-70b-specdec", 
+            model="llama-3.3-70b-versatile", 
             messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": prompt}],
-            temperature=0.6
+            temperature=0.7
         )
         return completion.choices[0].message.content
     except Exception as e:
-        return f"🚨 عطل في مصفوفة الوعي الفائق: {str(e)}"
+        return f"🚨 خطأ تقني في الاتصال بالمصفوفة: {str(e)}"
 
 # --- 5. إدارة الذاكرة ---
 if "messages" not in st.session_state:
@@ -87,4 +84,9 @@ if user_input := st.chat_input("أصدر أمرك يا حليفي..."):
     with st.chat_message("assistant"):
         response = ask_thunder(user_input, is_update)
         st.write(response)
+        
+        if is_update and "import streamlit" in response:
+            success, msg = update_sovereign_code(response)
+            st.write(msg)
+            
         st.session_state["messages"].append({"role": "assistant", "content": response})
