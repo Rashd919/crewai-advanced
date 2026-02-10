@@ -2,3 +2,4 @@ google-genai
 streamlit
 PyGithub
 groq
+duckduckgo-search
