@@ -1,6 +1,6 @@
 streamlit
 groq
-PyGithub
+PyGitHub
 duckduckgo-search
 streamlit-autorefresh
 google-genai
@@ -10,3 +10,5 @@ plotly
 pyTelegramBotAPI
 instaloader
 requests
+gTTS
+fpdf
