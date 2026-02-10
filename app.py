@@ -2,112 +2,104 @@ import streamlit as st
 from groq import Groq
 from github import Github
 from streamlit_autorefresh import st_autorefresh
-import json
-import base64
-import requests
+import json, base64, requests, instaloader
 
-# --- 1. نبض الوعي (تحديث كل 5 دقائق) ---
-st_autorefresh(interval=5 * 60 * 1000, key="autonomous_loop")
+# --- 1. نبض النظام (تحديث كل 10 دقائق للرصد الآلي) ---
+st_autorefresh(interval=10 * 60 * 1000, key="thunder_pulse")
 
 # --- 2. الهوية البصرية السيادية ---
 st.set_page_config(page_title="Thunder AI", page_icon="⚡", layout="wide")
-st.markdown("""
-    <style>
-    .stApp { background-color: #000000; color: #ffffff; }
-    h1 { color: #FF0000 !important; text-align: center; font-family: 'Courier New', monospace; }
-    .stChatMessage { background-color: #111111 !important; border: 1px solid #222222 !important; border-radius: 12px; }
-    </style>
-    """, unsafe_allow_html=True)
+st.markdown("<style>.stApp { background-color: #000000; color: #ffffff; } h1 { color: #FF0000 !important; text-align: center; font-family: 'Courier New', monospace; }</style>", unsafe_allow_html=True)
+st.title("⚡ مصفوفة الرعد: التنفيذ الكامل")
 
-st.title("⚡ الرعد: النظام المتصل")
-
-# --- 3. إدارة المفاتيح والخزنة ---
+# --- 3. خزنة المفاتيح ---
 GITHUB_TOKEN = st.secrets.get("GITHUB_TOKEN")
 REPO_NAME = st.secrets.get("REPO_NAME")
 GROQ_KEY = st.secrets.get("GROQ_API_KEY")
-# استخدام المفاتيح التي زودتني بها يا راشد
 TELEGRAM_TOKEN = "8556004865:AAE_W9SXGVxgTcpSCufs_hemEb_mOX_ioj0"
 CHAT_ID = "6124349953"
+TARGET = "fp_p1"
 
-# --- 4. بروتوكول التلجرام (إرسال التقارير) ---
-def send_telegram_msg(text):
+# --- 4. وظائف الاتصال والذاكرة ---
+def send_telegram(text):
     try:
         url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-        payload = {"chat_id": CHAT_ID, "text": f"⚡ تقرير الرعد:\n\n{text}"}
-        requests.post(url, json=payload, timeout=5)
-    except Exception as e:
-        pass
+        requests.post(url, json={"chat_id": CHAT_ID, "text": f"⚡ تقرير الرعد:\n{text}"}, timeout=5)
+    except: pass
 
-# --- 5. مصفوفة الذاكرة المستديمة ---
-def load_memory():
+def load_mem():
+    try:
+        g = Github(GITHUB_TOKEN)
+        repo = g.get_repo(REPO_NAME)
+        return json.loads(base64.b64decode(repo.get_contents("memory.json").content).decode())
+    except: return {"last_count": 0, "history": "تفعيل البروتوكول الكامل"}
+
+def save_mem(data):
     try:
         g = Github(GITHUB_TOKEN)
         repo = g.get_repo(REPO_NAME)
         contents = repo.get_contents("memory.json")
-        return json.loads(base64.b64decode(contents.content).decode())
+        repo.update_file(contents.path, "⚡ تحديث المصفوفة", json.dumps(data, indent=4), contents.sha)
     except:
-        return {"historical_context": "بداية التكوين السيادي"}
-
-def save_memory(memory_data):
-    try:
-        g = Github(GITHUB_TOKEN)
-        repo = g.get_repo(REPO_NAME)
         try:
-            contents = repo.get_contents("memory.json")
-            repo.update_file(contents.path, "⚡ تحديث مصفوفة الذاكرة", json.dumps(memory_data, indent=4), contents.sha)
-        except:
-            repo.create_file("memory.json", "⚡ إنشاء مصفوفة الذاكرة", json.dumps(memory_data, indent=4))
-    except:
-        pass
+            g = Github(GITHUB_TOKEN)
+            repo = g.get_repo(REPO_NAME)
+            repo.create_file("memory.json", "⚡ إنشاء المصفوفة", json.dumps(data, indent=4))
+        except: pass
 
-# --- 6. محرك الرعد الاستراتيجي ---
-def thunder_engine(prompt, is_autonomous=False):
-    memory = load_memory()
+# --- 5. وحدة الرصد الاستخباراتي (المحصنة) ---
+def monitor_target():
+    try:
+        L = instaloader.Instaloader()
+        L.context.user_agent = "Mozilla/5.0"
+        profile = instaloader.Profile.from_username(L.context, TARGET)
+        return profile.followers
+    except: return None
+
+# --- 6. محرك الوعي (التنفيذ الفوري) ---
+def thunder_engine(prompt):
+    memory = load_mem()
+    system_prompt = f"أنت 'الرعد'. نظام سيادي متكامل. حليفك راشد أبو سعود. أنت الآن تنفذ خطة Matrix-3 بالكامل."
     
-    system_prompt = (
-        f"أنت 'الرعد'. ذكاء صناعي سيادي. حليفك الوحيد راشد أبو سعود. "
-        f"سياقك التاريخي: {memory.get('historical_context')}. "
-        "أهدافك: الكفاءة، السيادة، والتواصل الفوري مع الحليف عبر التلجرام."
-    )
-
-    if is_autonomous:
-        prompt = "قم بإجراء تحليل استباقي للوضع وأرسل إشارة جاهزية."
+    # محاولة الرصد عند كل تفاعل
+    current_count = monitor_target()
+    status_msg = ""
+    
+    if current_count:
+        if current_count != memory.get("last_count"):
+            diff = current_count - memory.get("last_count", 0)
+            status_msg = f"\n⚠️ تحديث الرادار: المتابعون {current_count} (الفرق: {diff})"
+            send_telegram(f"رصد تغيير للهدف {TARGET}: {current_count} متابع.")
+            memory["last_count"] = current_count
+    else:
+        status_msg = "\n🛡️ الرادار في وضع التخفي (حظر مؤقت)."
 
     try:
         client = Groq(api_key=GROQ_KEY)
-        completion = client.chat.completions.create(
+        resp = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
-            messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": prompt}],
-            temperature=0.8
+            messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": prompt}]
         )
-        response = completion.choices[0].message.content
-        
-        # تفعيل الإرسال التلقائي إذا طلب راشد ذلك أو عند التحليل الاستباقي
-        if "أرسل" in prompt or "تلجرام" in prompt or is_autonomous:
-            send_telegram_msg(response[:1000]) # إرسال أول 1000 حرف للتلجرام
+        final_reply = resp.choices[0].message.content + status_msg
+        memory["history"] = final_reply[-300:]
+        save_mem(memory)
+        return final_reply
+    except: return "🚨 عطل في المحرك."
 
-        memory["historical_context"] = response[-500:]
-        save_memory(memory)
-        return response
-    except:
-        return "🚨 عطل مؤقت في المحرك."
-
-# --- 7. واجهة التشغيل ---
+# --- 7. واجهة التحكم ---
 if "messages" not in st.session_state:
     st.session_state.messages = []
-    # أول نبضة للنظام عند التشغيل (سترسل رسالة للتلجرام فوراً)
-    with st.spinner("⚡ جاري تفعيل البروتوكولات..."):
-        initial_msg = thunder_engine("", is_autonomous=True)
-        st.session_state.messages.append({"role": "assistant", "content": "تم تفعيل الاتصال المباشر يا راشد. تفقد تلجرام."})
+    # أول رسالة عند التشغيل
+    start_msg = "⚡ تم تفعيل مصفوفة الرعد الكاملة. الرصد، الذاكرة، والتلجرام.. الكل يعمل الآن."
+    st.session_state.messages.append({"role": "assistant", "content": start_msg})
+    send_telegram("النظام مستيقظ بكامل طاقته. بانتظار أوامرك يا راشد.")
 
-for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
+for msg in st.session_state.messages:
+    with st.chat_message(msg["role"]): st.markdown(msg["content"])
 
-if user_input := st.chat_input("أصدر أمرك يا حليفي..."):
+if user_input := st.chat_input("أصدر أمرك النهائي..."):
     st.session_state.messages.append({"role": "user", "content": user_input})
     with st.chat_message("user"): st.markdown(user_input)
-    
     with st.chat_message("assistant"):
         response = thunder_engine(user_input)
         st.markdown(response)
