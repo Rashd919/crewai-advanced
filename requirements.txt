@@ -6,3 +6,4 @@ streamlit-autorefresh
 google-genai
 scikit-learn
 scipy
+plotly
