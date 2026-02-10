@@ -1,5 +1,6 @@
-google-genai
 streamlit
-PyGithub
 groq
+PyGithub
 duckduckgo-search
+streamlit-autorefresh
+google-genai
