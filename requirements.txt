@@ -16,3 +16,4 @@ tavily-python
 edge-tts
 beautifulsoup4
 supabase
+google-generativeai
