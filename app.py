@@ -57,39 +57,33 @@ def thunder_intel_radar(query, max_results=5):
 
     return "⚠️ الرادار لم يتمكن من الحصول على أي معلومات حالياً."
 
-def generate_absolute_voice(text, voice_primary="ar-JO-HamzaNeural", voice_fallback="ar-EG-SalmaNeural"):
+# --- 4. دالة TTS جديدة بدون تقسيم النصوص ---
+def generate_absolute_voice(text, voice_primary="ar-SA-ZaidNeural", voice_fallback="ar-EG-SalemNeural"):
     clean = re.sub(r'[^\w\s.،؟!,]', '', text).strip()
     if not clean:
-        print("⚠️ النص فارغ بعد التنظيف، لا يمكن توليد الصوت.")
+        print("⚠️ النص فارغ بعد التنظيف.")
         return None
 
-    chunks = [clean[i:i+300] for i in range(0, len(clean), 300)]
-    files = []
+    output = "report.mp3"
+    if os.path.exists(output):
+        os.remove(output)
 
-    for idx, chunk in enumerate(chunks):
-        output = f"v_{idx}.mp3"
-        if os.path.exists(output):
-            os.remove(output)
-        try:
-            subprocess.run(
-                ["edge-tts", "--voice", voice_primary, "--text", chunk, "--write-media", output],
-                timeout=25
-            )
-            if os.path.exists(output) and os.path.getsize(output) > 0:
-                files.append(output)
-            else:
-                # إذا فشل الصوت الأساسي جرب الصوت البديل
-                subprocess.run(
-                    ["edge-tts", "--voice", voice_fallback, "--text", chunk, "--write-media", output],
-                    timeout=25
-                )
-                if os.path.exists(output) and os.path.getsize(output) > 0:
-                    files.append(output)
-        except Exception as e:
-            print(f"⚠️ خطأ في TTS: {e}")
+    try:
+        # تجربة الصوت الرئيسي
+        subprocess.run(["edge-tts", "--voice", voice_primary, "--text", clean, "--write-media", output], timeout=60)
+        if os.path.exists(output) and os.path.getsize(output) > 0:
+            return [output]
+        # fallback الصوت البديل لو فشل
+        subprocess.run(["edge-tts", "--voice", voice_fallback, "--text", clean, "--write-media", output], timeout=60)
+        if os.path.exists(output) and os.path.getsize(output) > 0:
+            return [output]
+    except Exception as e:
+        print(f"⚠️ خطأ في TTS: {e}")
 
-    return files if files else None
+    print("⚠️ لم يتم توليد أي صوت.")
+    return None
 
+# --- 5. GitHub تعديل تلقائي ---
 def update_github_file(file_path, new_content, commit_msg):
     try:
         g = Github(GITHUB_TOKEN)
@@ -101,7 +95,7 @@ def update_github_file(file_path, new_content, commit_msg):
         print(f"⚠️ GitHub Error: {e}")
         return f"❌ فشل تعديل {file_path}: {str(e)}"
 
-# --- 4. محرك السيادة ---
+# --- 6. محرك السيادة ---
 def thunder_absolute_engine(prompt):
     search_data = ""
     if any(k in prompt for k in ["ابحث", "رصد", "سعر", "تسلل", "أهداف"]):
@@ -126,6 +120,7 @@ def thunder_absolute_engine(prompt):
         )
         response = resp.choices[0].message.content
 
+        # إرسال التقرير الصوتي
         if any(k in prompt for k in ["صوت", "أرسل", "تقرير"]):
             v_files = generate_absolute_voice(response)
             if v_files:
@@ -137,6 +132,7 @@ def thunder_absolute_engine(prompt):
                             files={'voice': f}
                         )
 
+        # تعديل GitHub إذا طلب
         if "عدل الكود" in prompt:
             match = re.search(r"عدل الكود\s+(\S+)\s+(.*)", prompt)
             if match:
@@ -144,13 +140,14 @@ def thunder_absolute_engine(prompt):
                 github_res = update_github_file(path, new_code, "تحديث بواسطة الرعد السيادي")
                 response += f"\n{github_res}"
 
+        # تطوير ذاتي للنواة
         st.session_state.messages.append({"role": "system", "content": "تم تقييم الأداء وتحسين الخوارزمية تلقائياً."})
         return response
     except Exception as e:
         print(f"⚠️ Engine Error: {e}")
         return f"🚨 عطل في النواة: {str(e)}"
 
-# --- 5. واجهة Streamlit ---
+# --- 7. واجهة Streamlit ---
 for m in st.session_state.messages:
     with st.chat_message(m["role"]):
         st.write(m["content"])
