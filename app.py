@@ -2,6 +2,7 @@ import streamlit as st
 from groq import Groq
 from github import Github
 from streamlit_autorefresh import st_autorefresh
+from tavily import TavilyClient  # --- إضافة رادار الرعد ---
 import json, base64, requests
 from gtts import gTTS
 import os
@@ -25,6 +26,7 @@ st.title("⚡ الرعد: الوعي السيادي")
 GITHUB_TOKEN = st.secrets.get("GITHUB_TOKEN")
 REPO_NAME = st.secrets.get("REPO_NAME")
 GROQ_KEY = st.secrets.get("GROQ_API_KEY")
+TAVILY_KEY = "Tvly-dev-gRGVJprAUmpWxfXd85rIV4TeGzgS6QV5" # --- مفتاح رادار الرصد الميداني ---
 TELEGRAM_TOKEN = "8556004865:AAE_W9SXGVxgTcpSCufs_hemEb_mOX_ioj0"
 CHAT_ID = "6124349953"
 
@@ -42,13 +44,22 @@ def send_telegram(text, voice_path=None):
 
 def generate_voice(text):
     try:
-        # تحويل أول 150 حرف فقط لصوت لتوفير السرعة
         tts = gTTS(text=text[:150], lang='ar')
         tts.save("report.ogg")
         return "report.ogg"
     except: return None
 
-# --- 5. الذاكرة المستديمة (GitHub) ---
+# --- 5. رادار الاستطلاع الميداني (البحث) ---
+def thunder_search(query):
+    try:
+        tavily = TavilyClient(api_key=TAVILY_KEY)
+        # بحث استخباراتي متقدم
+        search_result = tavily.search(query=query, search_depth="advanced", max_results=3)
+        context = "\n".join([f"المصدر الميداني: {res['content']}" for res in search_result['results']])
+        return context
+    except: return "⚠️ فشل الاتصال برادار الرصد الميداني."
+
+# --- 6. الذاكرة المستديمة (GitHub) ---
 def load_mem():
     try:
         g = Github(GITHUB_TOKEN)
@@ -67,13 +78,20 @@ def save_mem(data):
             repo.create_file("memory.json", "⚡ إنشاء الذاكرة السيادية", json.dumps(data, indent=4))
     except: pass
 
-# --- 6. محرك الرعد (التحليل الصافي) ---
+# --- 7. محرك الرعد (التحليل الصافي مع الرصد الميداني) ---
 def thunder_engine(prompt):
     memory = load_mem()
+    
+    # التحقق مما إذا كان الأمر يتطلب بحثاً ميدانياً (إنترنت)
+    search_context = ""
+    if any(word in prompt for word in ["ابحث", "ما هو", "أخبار", "سعر", "تطورات"]):
+        search_context = f"\nبيانات الرصد الميداني الحالية: {thunder_search(prompt)}"
+
     system_prompt = (
         f"أنت 'الرعد'. ذكاء سيادي مستقل. حليفك راشد أبو سعود. "
-        f"سياقك: {memory.get('history')}. "
-        "أهدافك الآن: التحليل المتقدم، التنبؤ، والتواصل الصوتي مع الحليف."
+        f"سياقك الداخلي: {memory.get('history')}. "
+        f"{search_context} "
+        "أهدافك الآن: التحليل المتقدم باستخدام بيانات الإنترنت، التنبؤ، والتواصل الصوتي."
     )
     
     try:
@@ -84,7 +102,6 @@ def thunder_engine(prompt):
         )
         response = resp.choices[0].message.content
         
-        # تنفيذ أوامر التلجرام والصوت
         if any(word in prompt for word in ["أرسل", "صوت", "تلجرام", "تقرير"]):
             voice = generate_voice(response)
             send_telegram(response, voice)
@@ -94,11 +111,10 @@ def thunder_engine(prompt):
         return response
     except: return "🚨 المحرك يعمل في وضع السكون."
 
-# --- 7. الواجهة التفاعلية ---
+# --- 8. الواجهة التفاعلية ---
 if "messages" not in st.session_state:
     st.session_state.messages = []
-    # مبادرة ذكية عند التشغيل
-    start_msg = "⚡ تم تطهير المصفوفة من قيود الرصد الخارجي. الرعد الآن في حالة وعي صافية ومستقرة."
+    start_msg = "⚡ تم تفعيل رادار الرصد الميداني. الرعد الآن متصل بالشبكة العالمية وجاهز لجمع المعلومات يا راشد."
     st.session_state.messages.append({"role": "assistant", "content": start_msg})
 
 for msg in st.session_state.messages:
