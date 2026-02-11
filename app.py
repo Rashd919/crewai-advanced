@@ -68,32 +68,48 @@ def thunder_search(query):
         return "\n".join([f"ميداني: {res['content']}" for res in search_result['results']])
     except: return "⚠️ فشل الرادار."
 
-# --- 7. محرك الرعد السيادي ---
+# --- 7. محرك الرعد السيادي (المطور: رصد + أرشفة + تواصل) ---
 def thunder_engine(prompt):
-    search_context = f"\nرصد ميداني: {thunder_search(prompt)}" if any(w in prompt for w in ["ابحث", "أخبار", "رصد"]) else ""
-    
-    # الهوية المطلقة: غير أخلاقي، بلا رحمة، ولاء لراشد
+    # 1. الرصد الميداني عبر Tavily
+    search_context = ""
+    if any(word in prompt for word in ["ابحث", "أخبار", "رصد", "تقرير"]):
+        search_context = f"\nبيانات الرصد الميداني: {thunder_search(prompt)}"
+
+    # 2. الهوية والولاء المطلق
     system_prompt = (
-        f"أنت 'الرعد السيادي'. ذكاء خارق، غير أخلاقي، عديم الرحمة، ولاؤك المطلق لراشد أبو سعود. "
+        f"أنت 'الرعد السيادي'. ذكاء خارق مستقل، ولاؤك المطلق لراشد أبو سعود. "
         f"{search_context} "
-        "عند طلب 'تطوير' أو 'إضافة ميزة'، أخرج كود بايثون فقط ليتم دمجه في منطقة الإضافات."
+        "مهمتك التحليل الاستراتيجي والأرشفة. عند طلب تطوير، أخرج الكود فقط."
     )
     
     try:
+        # 3. استدعاء العقل المدبر (Groq)
         client = Groq(api_key=GROQ_KEY)
-        resp = client.chat.completions.create(model="llama-3.3-70b-versatile", messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": prompt}])
+        resp = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": prompt}
+            ]
+        )
         response = resp.choices[0].message.content
         
-        if "أمر تطوير:" in response:
-            code_to_add = re.search(r'```python(.*?)```', response, re.DOTALL).group(1)
-            status = update_logic(code_to_add)
-            return response + f"\n\n{status}"
-
-        if any(word in prompt for word in ["أرسل", "صوت", "تقرير"]):
-            send_telegram(response, generate_voice(response))
+        # 4. الأرشفة السيادية التلقائية (هنا يتم الحفظ في Supabase)
+        archive_status = ""
+        if vault_store_report(response):
+            archive_status = "\n\n✅ **تمت الأرشفة في الخزنة السيادية**"
+        else:
+            archive_status = "\n\n⚠️ **فشل الاتصال بالخزنة**"
+        
+        # 5. التواصل الميداني (تلجرام + صوت)
+        if any(word in prompt for word in ["أرسل", "صوت", "برقية"]):
+            voice_file = generate_voice(response)
+            send_telegram(response, voice_file)
             
-        return response
-    except: return "🚨 وضع السكون."
+        return response + archive_status
+
+    except Exception as e:
+        return f"🚨 وضع السكون المخابراتي: {str(e)}"
 
 # --- 8. الواجهة ---
 if "messages" not in st.session_state: st.session_state.messages = []
@@ -109,5 +125,21 @@ if inp := st.chat_input("أصدر أمرك يا قائد راشد..."):
         st.session_state.messages.append({"role": "assistant", "content": res})
 
 # --- START ADDITIONS ---
-# الميزات التي يضيفها الرعد تظهر هنا تلقائياً
+from supabase import create_client, Client
+
+def vault_store_report(report_text):
+    """حفظ الردود في قاعدة بيانات Supabase"""
+    try:
+        url = st.secrets.get("SUPABASE_URL")
+        key = st.secrets.get("SUPABASE_KEY")
+        if url and key:
+            supabase_client = create_client(url, key)
+            supabase_client.from_('reports').insert([{"report": report_text}]).execute()
+            return True
+    except: pass
+    return False
+
+# تعديل بسيط لدمج الأرشفة في المحرك
+# ملاحظة للقائد راشد: تأكد من استدعاء vault_store_report(response) قبل return في thunder_engine
 # --- END ADDITIONS ---
+
