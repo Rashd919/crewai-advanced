@@ -96,9 +96,8 @@ def thunder_engine(prompt, image_data=None):
     try:
         client = Groq(api_key=GROQ_KEY)
         
-        # 2. تنفيذ "تطوير المحرك": التعامل مع الصور والخرائط
+        # 2. تنفيذ "تطوير المحرك": تم تحديث الموديل ليكون llama-3.2-90b-vision-preview لضمان الاستقرار
         if image_data:
-            # تم تحديث الموديل هنا إلى الإصدار الجديد 90b المدعوم
             model = "llama-3.2-90b-vision-preview" 
             messages = [{
                 "role": "user",
