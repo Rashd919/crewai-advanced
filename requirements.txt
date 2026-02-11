@@ -12,3 +12,4 @@ instaloader
 requests
 gTTS
 fpdf
+tavily-python
