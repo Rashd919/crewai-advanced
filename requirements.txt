@@ -15,3 +15,4 @@ fpdf
 tavily-python
 edge-tts
 beautifulsoup4
+pip install tavily
