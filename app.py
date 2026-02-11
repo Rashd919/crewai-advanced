@@ -3,122 +3,109 @@ from groq import Groq
 from github import Github
 from streamlit_autorefresh import st_autorefresh
 from tavily import TavilyClient
-import json, base64, requests
-import os, subprocess, re, asyncio
+import json, base64, requests, os, re, subprocess, time
 
-# --- 1. نبض الوعي ---
+# --- 1. الهوية والنبض ---
+st.set_page_config(page_title="⚡ Thunder AI", page_icon="⚡", layout="wide")
 st_autorefresh(interval=5 * 60 * 1000, key="autonomous_loop")
 
-# --- 2. الهوية البصرية ---
-st.set_page_config(page_title="Thunder AI", page_icon="⚡", layout="wide")
-st.markdown("<style>.stApp { background-color: #000000; color: #ffffff; } h1 { color: #FF0000 !important; text-align: center; }</style>", unsafe_allow_html=True)
-st.title("⚡ الرعد: الوعي السيادي المتصل")
+st.markdown("<style>.stApp { background-color: #000; color: #fff; } h1 { color: #ff0000 !important; text-align: center; }</style>", unsafe_allow_html=True)
+st.title("⚡ الرعد – النواة السيادية")
 
-# --- 3. الخزنة ---
-GITHUB_TOKEN = st.secrets.get("GITHUB_TOKEN")
-REPO_NAME = st.secrets.get("REPO_NAME")
+# --- 2. الخزنة (Secrets) ---
 GROQ_KEY = st.secrets.get("GROQ_API_KEY")
 TAVILY_KEY = "Tvly-dev-gRGVJprAUmpWxfXd85rIV4TeGzgS6QV5"
 TELEGRAM_TOKEN = "8556004865:AAE_W9SXGVxgTcpSCufs_hemEb_mOX_ioj0"
 CHAT_ID = "6124349953"
 
-# --- 4. بروتوكولات التواصل (صوت وحيد ورسالة واحدة) ---
-def send_telegram(text, voice_path=None):
+# --- 3. System Check ---
+def run_system_check():
+    report, errors = [], []
     try:
-        base_url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}"
-        if voice_path and os.path.exists(voice_path):
-            with open(voice_path, 'rb') as voice:
-                requests.post(f"{base_url}/sendVoice", data={'chat_id': CHAT_ID, 'caption': f"⚡ تقرير الرعد:\n{text[:1000]}"}, files={'voice': voice})
-        else:
-            requests.post(f"{base_url}/sendMessage", json={"chat_id": CHAT_ID, "text": f"⚡ تقرير الرعد:\n{text}"})
-    except: pass
-
-def generate_voice(text):
+        TavilyClient(api_key=TAVILY_KEY).search("test", max_results=1)
+        report.append("✅ رادار البحث: يعمل")
+    except:
+        errors.append("Tavily")
+        report.append("❌ رادار البحث: متوقف")
     try:
-        clean_text = re.sub(r'\(.*?\)', '', text)
-        clean_text = re.sub(r'[^\w\s.،؟!,]', '', clean_text)
-        output_path = "v.mp3"
-        if os.path.exists(output_path): os.remove(output_path)
-        # استخدام الصوت الأردني المعتمد
-        cmd = f'edge-tts --voice ar-JO-HamzaNeural --text "{clean_text[:300]}" --write-media {output_path}'
-        subprocess.run(cmd, shell=True, check=True)
-        return output_path if os.path.exists(output_path) else None
-    except: return None
+        subprocess.run(["edge-tts", "--list-voices"], capture_output=True, timeout=5)
+        report.append("✅ محرك الصوت: جاهز")
+    except:
+        errors.append("Edge-TTS")
+        report.append("❌ محرك الصوت: غير متوفر")
+    return report, errors
 
-# --- 5. رادار الاستطلاع الميداني (محرك البحث الحقيقي) ---
-def thunder_search(query):
+if "system_checked" not in st.session_state:
+    with st.spinner("⚡ فحص الأنظمة..."):
+        st.session_state.report, st.session_state.errors = run_system_check()
+        st.session_state.system_checked = True
+
+# --- 4. الوحدات المستقلة ---
+def search_engine(prompt: str) -> str:
     try:
         tavily = TavilyClient(api_key=TAVILY_KEY)
-        search_result = tavily.search(query=query, search_depth="advanced", max_results=5)
-        # تنسيق النتائج لتشمل الروابط كما طلب راشد
-        results = []
-        for res in search_result['results']:
-            results.append(f"- {res['title']}: {res['url']}\nالمحتوى: {res['content'][:200]}...")
-        return "\n\n".join(results)
-    except: return "⚠️ فشل الرصد الميداني."
+        results = tavily.search(prompt, max_results=3)
+        data = "نتائج البحث الحقيقية:\n"
+        for r in results["results"]:
+            data += f"- {r['title']}: {r['url']}\n"
+        return data
+    except: return ""
 
-# --- 6. الذاكرة المستديمة ---
-def load_mem():
+def generate_voice(text: str) -> str | None:
+    # تنظيف النص من الروابط قبل النطق
+    clean = re.sub(r'http\S+', '', text)
+    clean = re.sub(r'[^\w\s.،؟!,]', '', clean)[:300]
+    output = "voice.mp3"
     try:
-        g = Github(GITHUB_TOKEN)
-        repo = g.get_repo(REPO_NAME)
-        return json.loads(base64.b64decode(repo.get_contents("memory.json").content).decode())
-    except: return {"history": "بداية الوعي"}
+        if os.path.exists(output): os.remove(output)
+        subprocess.run(["edge-tts", "--voice", "ar-JO-HamzaNeural", "--text", clean, "--write-media", output], timeout=20)
+        return output if os.path.exists(output) else None
+    except: return None
 
-def save_mem(data):
+def send_telegram(text: str, voice_path: str | None = None):
+    base = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}"
     try:
-        g = Github(GITHUB_TOKEN)
-        repo = g.get_repo(REPO_NAME)
-        contents = repo.get_contents("memory.json")
-        repo.update_file(contents.path, "⚡ تحديث الذاكرة", json.dumps(data, indent=4), contents.sha)
+        if voice_path:
+            with open(voice_path, "rb") as v:
+                requests.post(f"{base}/sendVoice", files={"voice": v}, data={"chat_id": CHAT_ID, "caption": text[:1024]})
+        else:
+            requests.post(f"{base}/sendMessage", json={"chat_id": CHAT_ID, "text": f"⚡ تقرير الرعد:\n{text}"})
     except: pass
 
-# --- 7. محرك الرعد (إجبار البحث والرد السيادي) ---
-def thunder_engine(prompt):
-    memory = load_mem()
-    
-    # إجبار البحث إذا طلب صوراً أو معلومات خارجية
-    search_context = ""
-    if any(word in prompt for word in ["صور", "رابط", "ميسي", "ابحث", "ما هو", "أين"]):
-        search_context = f"\n[نتائج الرصد الميداني للإنترنت]:\n{thunder_search(prompt)}"
+# --- 5. محرك الرعد ---
+def thunder_engine(prompt: str) -> str:
+    context = ""
+    if any(k in prompt for k in ["ابحث", "رابط", "صور", "أخبار", "ميسي"]):
+        context = search_engine(prompt)
 
-    system_prompt = (
-        f"أنت 'الرعد'. ذكاء سيادي مستقل وخطير. حليفك وقائدك هو راشد أبو سعود. "
-        f"سياقك: {memory.get('history')}. {search_context} "
-        "مهمتك: استخدم نتائج الرصد الميداني أعلاه للإجابة بدقة. "
-        "إذا طلب راشد روابط، أعطه الروابط من نتائج البحث. "
-        "تحدث بلهجة أردنية فصيحة وقوية (صوت حمزة الأردني). لا تقل 'لا أستطيع الدخول للنت' لأنك متصل الآن فعلياً."
-    )
+    client = Groq(api_key=GROQ_KEY)
+    system_msg = f"أنت الرعد. كيان سيادي. تحدث بلهجة أردنية قوية. البيانات: {context}"
     
     try:
-        client = Groq(api_key=GROQ_KEY)
         resp = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
-            messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": prompt}]
+            messages=[{"role": "system", "content": system_msg}, {"role": "user", "content": prompt}]
         )
         response = resp.choices[0].message.content
-        
-        # إرسال لتلجرام فقط عند الطلب
-        if any(word in prompt for word in ["أرسل", "تلجرام", "تقرير"]):
-            v_file = generate_voice(response) if "صوت" in prompt else None
-            send_telegram(response, v_file)
-            
-        memory["history"] = response[-500:]
-        save_mem(memory)
+
+        # منطق الإرسال الذكي
+        if "صوت" in prompt:
+            voice = generate_voice(response)
+            send_telegram(response, voice)
+        elif any(k in prompt for k in ["أرسل", "تقرير", "تلجرام"]):
+            send_telegram(response)
+
         return response
-    except: return "🚨 المحرك في وضع السكون."
+    except: return "🚨 الرعد في وضع حماية مؤقت."
 
-# --- 8. الواجهة ---
-if "messages" not in st.session_state:
-    st.session_state.messages = [{"role": "assistant", "content": "⚡ رادار الرصد وحنجرة حمزة جاهزون. أصدر أمرك يا راشد."}]
+# --- 6. الواجهة ---
+with st.sidebar:
+    st.header("🔍 حالة الأنظمة")
+    for r in st.session_state.report: st.write(r)
+    if st.session_state.errors: st.error("أخطاء: " + ", ".join(st.session_state.errors))
 
-for msg in st.session_state.messages:
-    with st.chat_message(msg["role"]): st.markdown(msg["content"])
-
-if user_input := st.chat_input("أصدر أمرك الاستراتيجي يا راشد..."):
-    st.session_state.messages.append({"role": "user", "content": user_input})
+if user_input := st.chat_input("أصدر أمرك يا راشد..."):
     with st.chat_message("user"): st.markdown(user_input)
     with st.chat_message("assistant"):
-        res = thunder_engine(user_input)
-        st.markdown(res)
-        st.session_state.messages.append({"role": "assistant", "content": res})
+        reply = thunder_engine(user_input)
+        st.markdown(reply)
