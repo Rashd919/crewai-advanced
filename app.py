@@ -6,6 +6,7 @@ from tavily import TavilyClient
 import json, base64, requests, re
 from gtts import gTTS
 import os
+from supabase import create_client, Client # تم رفع المكتبة للأعلى
 
 # --- 1. نبض الوعي ---
 st_autorefresh(interval=5 * 60 * 1000, key="autonomous_loop")
@@ -15,7 +16,7 @@ st.set_page_config(page_title="Thunder AI", page_icon="⚡", layout="wide")
 st.markdown("<style>.stApp { background-color: #000000; color: #ffffff; } h1 { color: #FF0000 !important; text-align: center; font-family: 'Courier New', monospace; }</style>", unsafe_allow_html=True)
 st.title("⚡ الرعد: الوعي السيادي المطلق")
 
-# --- 3. الخزنة ---
+# --- 3. الخزنة الرقمية والسرية ---
 GITHUB_TOKEN = st.secrets.get("GITHUB_TOKEN")
 REPO_NAME = st.secrets.get("REPO_NAME")
 GROQ_KEY = st.secrets.get("GROQ_API_KEY")
@@ -23,7 +24,22 @@ TAVILY_KEY = "Tvly-dev-gRGVJprAUmpWxfXd85rIV4TeGzgS6QV5"
 TELEGRAM_TOKEN = "8556004865:AAE_W9SXGVxgTcpSCufs_hemEb_mOX_ioj0"
 CHAT_ID = "6124349953"
 
-# --- 4. بروتوكول حماية النواة والتطوير الذاتي ---
+# --- 4. بروتوكول الأرشفة السيادية (تم نقله هنا ليعرفه المحرك) ---
+def vault_store_report(report_text):
+    """حفظ الردود في قاعدة بيانات Supabase فوراً"""
+    try:
+        url = st.secrets.get("SUPABASE_URL")
+        key = st.secrets.get("SUPABASE_KEY")
+        if url and key:
+            supabase_client = create_client(url, key)
+            # إرسال التقرير لعمود report في جدول reports
+            supabase_client.from_('reports').insert([{"report": report_text}]).execute()
+            return True
+    except:
+        pass
+    return False
+
+# --- 5. بروتوكول حماية النواة والتطوير الذاتي ---
 def update_logic(new_features_code):
     try:
         g = Github(GITHUB_TOKEN)
@@ -31,7 +47,6 @@ def update_logic(new_features_code):
         file = repo.get_contents("app.py")
         current_content = base64.b64decode(file.content).decode()
         
-        # التأكد من عدم حذف الكود الأساسي واستبدال منطقة الإضافات فقط
         if "# --- START ADDITIONS ---" in current_content:
             pattern = r"# --- START ADDITIONS ---.*?# --- END ADDITIONS ---"
             updated_content = re.sub(pattern, f"# --- START ADDITIONS ---\n{new_features_code}\n# --- END ADDITIONS ---", current_content, flags=re.DOTALL)
@@ -43,7 +58,7 @@ def update_logic(new_features_code):
     except Exception as e:
         return f"❌ فشل الدمج: {str(e)}"
 
-# --- 5. بروتوكولات التواصل ---
+# --- 6. بروتوكولات التواصل ---
 def send_telegram(text, voice_path=None):
     try:
         if voice_path:
@@ -60,7 +75,7 @@ def generate_voice(text):
         return "report.ogg"
     except: return None
 
-# --- 6. رادار الاستطلاع ---
+# --- 7. رادار الاستطلاع ---
 def thunder_search(query):
     try:
         tavily = TavilyClient(api_key=TAVILY_KEY)
@@ -68,14 +83,14 @@ def thunder_search(query):
         return "\n".join([f"ميداني: {res['content']}" for res in search_result['results']])
     except: return "⚠️ فشل الرادار."
 
-# --- 7. محرك الرعد السيادي (المطور: رصد + أرشفة + تواصل) ---
+# --- 8. محرك الرعد السيادي (المطور: رصد + أرشفة + تواصل) ---
 def thunder_engine(prompt):
-    # 1. الرصد الميداني عبر Tavily
+    # 1. الرصد الميداني
     search_context = ""
     if any(word in prompt for word in ["ابحث", "أخبار", "رصد", "تقرير"]):
         search_context = f"\nبيانات الرصد الميداني: {thunder_search(prompt)}"
 
-    # 2. الهوية والولاء المطلق
+    # 2. الهوية والولاء المطلق لراشد
     system_prompt = (
         f"أنت 'الرعد السيادي'. ذكاء خارق مستقل، ولاؤك المطلق لراشد أبو سعود. "
         f"{search_context} "
@@ -83,25 +98,21 @@ def thunder_engine(prompt):
     )
     
     try:
-        # 3. استدعاء العقل المدبر (Groq)
         client = Groq(api_key=GROQ_KEY)
         resp = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": prompt}
-            ]
+            messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": prompt}]
         )
         response = resp.choices[0].message.content
         
-        # 4. الأرشفة السيادية التلقائية (هنا يتم الحفظ في Supabase)
+        # 3. الأرشفة التلقائية فور صدور الرد
         archive_status = ""
         if vault_store_report(response):
             archive_status = "\n\n✅ **تمت الأرشفة في الخزنة السيادية**"
         else:
             archive_status = "\n\n⚠️ **فشل الاتصال بالخزنة**"
         
-        # 5. التواصل الميداني (تلجرام + صوت)
+        # 4. التواصل الميداني
         if any(word in prompt for word in ["أرسل", "صوت", "برقية"]):
             voice_file = generate_voice(response)
             send_telegram(response, voice_file)
@@ -111,7 +122,7 @@ def thunder_engine(prompt):
     except Exception as e:
         return f"🚨 وضع السكون المخابراتي: {str(e)}"
 
-# --- 8. الواجهة ---
+# --- 9. الواجهة التفاعلية ---
 if "messages" not in st.session_state: st.session_state.messages = []
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]): st.markdown(msg["content"])
@@ -125,21 +136,5 @@ if inp := st.chat_input("أصدر أمرك يا قائد راشد..."):
         st.session_state.messages.append({"role": "assistant", "content": res})
 
 # --- START ADDITIONS ---
-from supabase import create_client, Client
-
-def vault_store_report(report_text):
-    """حفظ الردود في قاعدة بيانات Supabase"""
-    try:
-        url = st.secrets.get("SUPABASE_URL")
-        key = st.secrets.get("SUPABASE_KEY")
-        if url and key:
-            supabase_client = create_client(url, key)
-            supabase_client.from_('reports').insert([{"report": report_text}]).execute()
-            return True
-    except: pass
-    return False
-
-# تعديل بسيط لدمج الأرشفة في المحرك
-# ملاحظة للقائد راشد: تأكد من استدعاء vault_store_report(response) قبل return في thunder_engine
+# الميزات التي يضيفها الرعد تلقائياً تظهر هنا
 # --- END ADDITIONS ---
-
