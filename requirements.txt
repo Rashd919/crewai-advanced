@@ -14,3 +14,4 @@ gTTS
 fpdf
 tavily-python
 edge-tts
+beautifulsoup4
