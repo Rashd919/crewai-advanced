@@ -7,6 +7,7 @@ import json, base64, requests
 import os
 import edge_tts # --- الحنجرة الجديدة ---
 import asyncio # --- معالج المهام المتزامنة ---
+import re # --- لتنظيف النص ---
 
 # --- 1. نبض الوعي (تحديث كل 5 دقائق) ---
 st_autorefresh(interval=5 * 60 * 1000, key="autonomous_loop")
@@ -34,29 +35,41 @@ CHAT_ID = "6124349953"
 # --- 4. بروتوكولات التواصل (تحديث الحنجرة السيادية) ---
 def send_telegram(text, voice_path=None):
     try:
-        if voice_path:
-            url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendVoice"
+        # إرسال الرسالة النصية أولاً دائماً
+        base_url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}"
+        requests.post(f"{base_url}/sendMessage", json={"chat_id": CHAT_ID, "text": f"⚡ تقرير الرعد:\n{text}"})
+        
+        # إرسال الصوت إذا وجد وتوفر
+        if voice_path and os.path.exists(voice_path):
             with open(voice_path, 'rb') as voice:
-                requests.post(url, data={'chat_id': CHAT_ID}, files={'voice': voice})
-        else:
-            url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-            requests.post(url, json={"chat_id": CHAT_ID, "text": f"⚡ تقرير الرعد:\n{text}"})
+                requests.post(f"{base_url}/sendVoice", data={'chat_id': CHAT_ID}, files={'voice': voice})
     except: pass
 
-# الدالة الجديدة التي تجعل الرعد يتكلم كشخص عربي حي (حمزة الأردني)
+# دالة ذكية لتنظيف النص ومعالجته صوتياً
 async def generate_voice_async(text):
     try:
-        voice = "ar-JO-HamzaNeural" # صوت أردني وقور بطلاقة عالية
-        communicate = edge_tts.Communicate(text[:250], voice) # نطق أول 250 حرف لضمان السرعة
-        output_path = "thunder_voice.ogg"
+        # 1. تنظيف النص من الرموز التعبيرية والخاصة لضمان عمل المحرك
+        clean_text = re.sub(r'[^\w\s.،؟!,]', '', text)
+        voice = "ar-JO-HamzaNeural" 
+        output_path = "thunder_voice.mp3"
+        
+        communicate = edge_tts.Communicate(clean_text[:300], voice)
         await communicate.save(output_path)
-        return output_path
-    except: return None
+        
+        if os.path.exists(output_path) and os.path.getsize(output_path) > 0:
+            return output_path
+    except Exception as e:
+        st.error(f"خطأ في محرك الصوت: {e}")
+    return None
 
 def generate_voice(text):
-    # تشغيل الدالة المتزامنة داخل البيئة التقليدية
     try:
-        return asyncio.run(generate_voice_async(text))
+        # إنشاء حلقة أحداث جديدة لتجنب تعارض Streamlit
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        path = loop.run_until_complete(generate_voice_async(text))
+        loop.close()
+        return path
     except: return None
 
 # --- 5. رادار الاستطلاع الميداني (البحث) ---
@@ -110,14 +123,19 @@ def thunder_engine(prompt):
         )
         response = resp.choices[0].message.content
         
-        if any(word in prompt for word in ["أرسل", "صوت", "تلجرام", "تقرير"]):
-            voice = generate_voice(response)
-            send_telegram(response, voice)
+        # تفعيل الصوت في حالات محددة أو عند طلب ذلك
+        if any(word in prompt for word in ["أرسل", "صوت", "تلجرام", "تقرير", "احكي", "تكلم"]):
+            voice_file = generate_voice(response)
+            send_telegram(response, voice_file)
+        else:
+            # إرسال نص فقط إذا لم يطلب صوتاً لتوفير الموارد
+            send_telegram(response)
             
         memory["history"] = response[-500:]
         save_mem(memory)
         return response
-    except: return "🚨 المحرك يعمل في وضع السكون."
+    except Exception as e: 
+        return f"🚨 المحرك واجه عطلاً فنياً: {str(e)}"
 
 # --- 8. الواجهة التفاعلية ---
 if "messages" not in st.session_state:
