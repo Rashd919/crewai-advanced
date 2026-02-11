@@ -1,11 +1,11 @@
 import streamlit as st
 from groq import Groq
-from github import Github
+from github import Github, Auth
 from tavily import TavilyClient
 import requests, os, re, subprocess
 from bs4 import BeautifulSoup
 
-# --- 0. تعريف القائد (لتجاوز تحذيرات Tavily) ---
+# --- 0. تعريف القائد ---
 IS_COMMANDER_RASHED = True  # True لأنك أنت القائد راشد
 
 # --- 1. الهوية السيادية ---
@@ -23,13 +23,10 @@ TAVILY_KEY = st.secrets["TAVILY_KEY"]
 TELE_TOKEN = st.secrets["TELEGRAM_TOKEN"]
 CHAT_ID = st.secrets["CHAT_ID"]
 
-# --- 3. الأدوات الفتاكة ---
+# --- 3. أدوات الرصد ---
 def thunder_intel_radar(query, max_results=5):
     if not IS_COMMANDER_RASHED:
-        print("⚠️ الرعد لا يعرف القائد، البحث مؤجل.")
-        return "⚠️ لم يتم تنفيذ البحث."
-
-    # البحث عبر Tavily
+        return "⚠️ الرعد لا يعرف القائد، البحث مؤجل."
     try:
         tavily = TavilyClient(api_key=TAVILY_KEY)
         search = tavily.search(query=query, search_depth="advanced", max_results=max_results)
@@ -42,30 +39,22 @@ def thunder_intel_radar(query, max_results=5):
     except Exception as e:
         print(f"⚠️ Tavily Error: {e}")
 
-    # Fallback: Google Search
+    # Fallback Google
     try:
         google_url = f"https://www.google.com/search?q={query}"
         headers = {"User-Agent": "Mozilla/5.0"}
         r = requests.get(google_url, headers=headers, timeout=10)
         soup = BeautifulSoup(r.text, "html.parser")
-        links = []
-        for a in soup.select("a"):
-            href = a.get("href")
-            if href and href.startswith("http"):
-                links.append(href)
-            if len(links) >= max_results:
-                break
-        if links:
-            intel = ""
-            for idx, link in enumerate(links):
-                intel += f"📍 مصدر {idx+1}: {link}\n"
-            return intel
+        links = [a.get("href") for a in soup.select("a") if a.get("href") and a.get("href").startswith("http")]
+        intel = ""
+        for idx, link in enumerate(links[:max_results]):
+            intel += f"📍 مصدر {idx+1}: {link}\n"
+        return intel if intel else "⚠️ لم يتم العثور على معلومات."
     except Exception as e:
         print(f"⚠️ Scraping Error: {e}")
+        return "⚠️ الرادار لم يتمكن من الحصول على أي معلومات حالياً."
 
-    return "⚠️ الرادار لم يتمكن من الحصول على أي معلومات حالياً."
-
-# --- 4. دالة TTS جديدة بدون تقسيم النصوص ---
+# --- 4. TTS محسّن ---
 def generate_absolute_voice(text, voice_primary="ar-SA-ZaidNeural", voice_fallback="ar-EG-SalemNeural"):
     clean = re.sub(r'[^\w\s.،؟!,]', '', text).strip()
     if not clean:
@@ -77,10 +66,12 @@ def generate_absolute_voice(text, voice_primary="ar-SA-ZaidNeural", voice_fallba
         os.remove(output)
 
     try:
-        subprocess.run(["edge-tts", "--voice", voice_primary, "--text", clean, "--write-media", output], timeout=60)
+        # تجربة الصوت الرئيسي
+        subprocess.run(["edge-tts", "--voice", voice_primary, "--text", clean, "--write-media", output], timeout=120)
         if os.path.exists(output) and os.path.getsize(output) > 0:
             return [output]
-        subprocess.run(["edge-tts", "--voice", voice_fallback, "--text", clean, "--write-media", output], timeout=60)
+        # تجربة الصوت الاحتياطي
+        subprocess.run(["edge-tts", "--voice", voice_fallback, "--text", clean, "--write-media", output], timeout=120)
         if os.path.exists(output) and os.path.getsize(output) > 0:
             return [output]
     except Exception as e:
@@ -89,10 +80,10 @@ def generate_absolute_voice(text, voice_primary="ar-SA-ZaidNeural", voice_fallba
     print("⚠️ لم يتم توليد أي صوت.")
     return None
 
-# --- 5. GitHub تعديل تلقائي ---
+# --- 5. GitHub تحديث حديث ---
 def update_github_file(file_path, new_content, commit_msg):
     try:
-        g = Github(GITHUB_TOKEN)
+        g = Github(auth=Auth.Token(GITHUB_TOKEN))
         repo = g.get_repo(REPO_NAME)
         file = repo.get_contents(file_path)
         repo.update_file(file.path, commit_msg, new_content, file.sha)
@@ -146,7 +137,6 @@ def thunder_absolute_engine(prompt):
                 github_res = update_github_file(path, new_code, "تحديث بواسطة الرعد السيادي")
                 response += f"\n{github_res}"
 
-        # تطوير ذاتي للنواة
         st.session_state.messages.append({"role": "system", "content": "تم تقييم الأداء وتحسين الخوارزمية تلقائياً."})
         return response
     except Exception as e:
