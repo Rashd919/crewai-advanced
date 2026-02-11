@@ -21,9 +21,7 @@ TELE_TOKEN = st.secrets["TELEGRAM_TOKEN"]
 CHAT_ID = st.secrets["CHAT_ID"]
 
 # --- 3. الأدوات الفتاكة ---
-
 def thunder_intel_radar(query, max_results=5):
-    # 1️⃣ المحاولة عبر Tavily
     try:
         tavily = TavilyClient(api_key=TAVILY_KEY)
         search = tavily.search(query=query, search_depth="advanced", max_results=max_results)
@@ -36,7 +34,7 @@ def thunder_intel_radar(query, max_results=5):
     except Exception as e:
         print(f"⚠️ Tavily Error: {e}")
 
-    # 2️⃣ Fallback: Web Scraping لمصادر عامة (Google Search كمثال)
+    # Fallback: Google Search
     try:
         google_url = f"https://www.google.com/search?q={query}"
         headers = {"User-Agent": "Mozilla/5.0"}
@@ -59,25 +57,37 @@ def thunder_intel_radar(query, max_results=5):
 
     return "⚠️ الرادار لم يتمكن من الحصول على أي معلومات حالياً."
 
-def generate_absolute_voice(text):
+def generate_absolute_voice(text, voice_primary="ar-JO-HamzaNeural", voice_fallback="ar-EG-SalmaNeural"):
     clean = re.sub(r'[^\w\s.،؟!,]', '', text).strip()
     if not clean:
+        print("⚠️ النص فارغ بعد التنظيف، لا يمكن توليد الصوت.")
         return None
+
     chunks = [clean[i:i+300] for i in range(0, len(clean), 300)]
     files = []
+
     for idx, chunk in enumerate(chunks):
         output = f"v_{idx}.mp3"
+        if os.path.exists(output):
+            os.remove(output)
         try:
-            if os.path.exists(output):
-                os.remove(output)
             subprocess.run(
-                ["edge-tts", "--voice", "ar-JO-HamzaNeural", "--text", chunk, "--write-media", output],
+                ["edge-tts", "--voice", voice_primary, "--text", chunk, "--write-media", output],
                 timeout=25
             )
             if os.path.exists(output) and os.path.getsize(output) > 0:
                 files.append(output)
+            else:
+                # إذا فشل الصوت الأساسي جرب الصوت البديل
+                subprocess.run(
+                    ["edge-tts", "--voice", voice_fallback, "--text", chunk, "--write-media", output],
+                    timeout=25
+                )
+                if os.path.exists(output) and os.path.getsize(output) > 0:
+                    files.append(output)
         except Exception as e:
-            print(f"⚠️ TTS Error: {e}")
+            print(f"⚠️ خطأ في TTS: {e}")
+
     return files if files else None
 
 def update_github_file(file_path, new_content, commit_msg):
@@ -93,12 +103,10 @@ def update_github_file(file_path, new_content, commit_msg):
 
 # --- 4. محرك السيادة ---
 def thunder_absolute_engine(prompt):
-    # الرصد الذكي لأي معلومة
     search_data = ""
     if any(k in prompt for k in ["ابحث", "رصد", "سعر", "تسلل", "أهداف"]):
         search_data = thunder_intel_radar(prompt)
 
-    # تحليل استراتيجي للأوامر الخطرة
     strategy_note = ""
     if any(k in prompt for k in ["تسلل", "اختراق", "أهداف استراتيجية"]):
         strategy_note = "[⚡ تم تقييم الهدف وتحليل المخاطر. الخطة جاهزة للتنفيذ.]"
@@ -118,7 +126,6 @@ def thunder_absolute_engine(prompt):
         )
         response = resp.choices[0].message.content
 
-        # إرسال التقارير الصوتية على Telegram
         if any(k in prompt for k in ["صوت", "أرسل", "تقرير"]):
             v_files = generate_absolute_voice(response)
             if v_files:
@@ -130,7 +137,6 @@ def thunder_absolute_engine(prompt):
                             files={'voice': f}
                         )
 
-        # تنفيذ تعديل GitHub إذا تم طلبه
         if "عدل الكود" in prompt:
             match = re.search(r"عدل الكود\s+(\S+)\s+(.*)", prompt)
             if match:
@@ -138,9 +144,7 @@ def thunder_absolute_engine(prompt):
                 github_res = update_github_file(path, new_code, "تحديث بواسطة الرعد السيادي")
                 response += f"\n{github_res}"
 
-        # تطوير ذاتي
         st.session_state.messages.append({"role": "system", "content": "تم تقييم الأداء وتحسين الخوارزمية تلقائياً."})
-
         return response
     except Exception as e:
         print(f"⚠️ Engine Error: {e}")
