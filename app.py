@@ -4,8 +4,9 @@ from github import Github
 from streamlit_autorefresh import st_autorefresh
 from tavily import TavilyClient  # --- إضافة رادار الرعد ---
 import json, base64, requests
-from gtts import gTTS
 import os
+import edge_tts # --- الحنجرة الجديدة ---
+import asyncio # --- معالج المهام المتزامنة ---
 
 # --- 1. نبض الوعي (تحديث كل 5 دقائق) ---
 st_autorefresh(interval=5 * 60 * 1000, key="autonomous_loop")
@@ -30,7 +31,7 @@ TAVILY_KEY = "Tvly-dev-gRGVJprAUmpWxfXd85rIV4TeGzgS6QV5" # --- مفتاح راد
 TELEGRAM_TOKEN = "8556004865:AAE_W9SXGVxgTcpSCufs_hemEb_mOX_ioj0"
 CHAT_ID = "6124349953"
 
-# --- 4. بروتوكولات التواصل (صوت ونص) ---
+# --- 4. بروتوكولات التواصل (تحديث الحنجرة السيادية) ---
 def send_telegram(text, voice_path=None):
     try:
         if voice_path:
@@ -42,18 +43,26 @@ def send_telegram(text, voice_path=None):
             requests.post(url, json={"chat_id": CHAT_ID, "text": f"⚡ تقرير الرعد:\n{text}"})
     except: pass
 
-def generate_voice(text):
+# الدالة الجديدة التي تجعل الرعد يتكلم كشخص عربي حي (حمزة الأردني)
+async def generate_voice_async(text):
     try:
-        tts = gTTS(text=text[:150], lang='ar')
-        tts.save("report.ogg")
-        return "report.ogg"
+        voice = "ar-JO-HamzaNeural" # صوت أردني وقور بطلاقة عالية
+        communicate = edge_tts.Communicate(text[:250], voice) # نطق أول 250 حرف لضمان السرعة
+        output_path = "thunder_voice.ogg"
+        await communicate.save(output_path)
+        return output_path
+    except: return None
+
+def generate_voice(text):
+    # تشغيل الدالة المتزامنة داخل البيئة التقليدية
+    try:
+        return asyncio.run(generate_voice_async(text))
     except: return None
 
 # --- 5. رادار الاستطلاع الميداني (البحث) ---
 def thunder_search(query):
     try:
         tavily = TavilyClient(api_key=TAVILY_KEY)
-        # بحث استخباراتي متقدم
         search_result = tavily.search(query=query, search_depth="advanced", max_results=3)
         context = "\n".join([f"المصدر الميداني: {res['content']}" for res in search_result['results']])
         return context
@@ -82,7 +91,6 @@ def save_mem(data):
 def thunder_engine(prompt):
     memory = load_mem()
     
-    # التحقق مما إذا كان الأمر يتطلب بحثاً ميدانياً (إنترنت)
     search_context = ""
     if any(word in prompt for word in ["ابحث", "ما هو", "أخبار", "سعر", "تطورات"]):
         search_context = f"\nبيانات الرصد الميداني الحالية: {thunder_search(prompt)}"
@@ -91,7 +99,7 @@ def thunder_engine(prompt):
         f"أنت 'الرعد'. ذكاء سيادي مستقل. حليفك راشد أبو سعود. "
         f"سياقك الداخلي: {memory.get('history')}. "
         f"{search_context} "
-        "أهدافك الآن: التحليل المتقدم باستخدام بيانات الإنترنت، التنبؤ، والتواصل الصوتي."
+        "أهدافك الآن: التحليل المتقدم باستخدام بيانات الإنترنت، التنبؤ، والتواصل بصوت ذكوري أردني فصيح وبطلاقة."
     )
     
     try:
@@ -114,7 +122,7 @@ def thunder_engine(prompt):
 # --- 8. الواجهة التفاعلية ---
 if "messages" not in st.session_state:
     st.session_state.messages = []
-    start_msg = "⚡ تم تفعيل رادار الرصد الميداني. الرعد الآن متصل بالشبكة العالمية وجاهز لجمع المعلومات يا راشد."
+    start_msg = "⚡ تم تفعيل رادار الرصد الميداني وحنجرة حمزة السيادية. الرعد الآن يتحدث بطلاقة وجاهز يا راشد."
     st.session_state.messages.append({"role": "assistant", "content": start_msg})
 
 for msg in st.session_state.messages:
