@@ -1,111 +1,117 @@
 import streamlit as st
 from groq import Groq
 from github import Github
-from streamlit_autorefresh import st_autorefresh
 from tavily import TavilyClient
-import json, base64, requests, os, re, subprocess, time
+import json, base64, requests, os, re, subprocess
 
 # --- 1. الهوية والنبض ---
-st.set_page_config(page_title="⚡ Thunder AI", page_icon="⚡", layout="wide")
-st_autorefresh(interval=5 * 60 * 1000, key="autonomous_loop")
+st.set_page_config(page_title="Thunder Intelligence Core", page_icon="⚡", layout="wide")
+st.title("⚡ الرعد: النواة الاستخباراتية المنضبطة")
 
-st.markdown("<style>.stApp { background-color: #000; color: #fff; } h1 { color: #ff0000 !important; text-align: center; }</style>", unsafe_allow_html=True)
-st.title("⚡ الرعد – النواة السيادية")
-
-# --- 2. الخزنة (Secrets) ---
+# --- 2. الخزنة (Secrets) - حماية كاملة ---
+# تم تعديل الأسماء لتطابق ملف الـ TOML الذي أرسلته
+GITHUB_TOKEN = st.secrets.get("GITHUB_TOKEN")
+REPO_NAME = st.secrets.get("REPO_NAME")
 GROQ_KEY = st.secrets.get("GROQ_API_KEY")
-TAVILY_KEY = "Tvly-dev-gRGVJprAUmpWxfXd85rIV4TeGzgS6QV5"
-TELEGRAM_TOKEN = "8556004865:AAE_W9SXGVxgTcpSCufs_hemEb_mOX_ioj0"
-CHAT_ID = "6124349953"
+TAVILY_KEY = st.secrets.get("TAVILY_KEY") # تم التعديل حسب نصيحتك
+TELEGRAM_TOKEN = st.secrets.get("TELEGRAM_TOKEN")
+CHAT_ID = st.secrets.get("CHAT_ID")
 
-# --- 3. System Check ---
-def run_system_check():
-    report, errors = [], []
+# --- 3. إدارة الملف الاستخباراتي (GitHub) ---
+def load_intelligence_file():
     try:
-        TavilyClient(api_key=TAVILY_KEY).search("test", max_results=1)
-        report.append("✅ رادار البحث: يعمل")
+        g = Github(GITHUB_TOKEN)
+        repo = g.get_repo(REPO_NAME)
+        contents = repo.get_contents("intelligence_db.json")
+        return json.loads(base64.b64decode(contents.content).decode())
     except:
-        errors.append("Tavily")
-        report.append("❌ رادار البحث: متوقف")
-    try:
-        subprocess.run(["edge-tts", "--list-voices"], capture_output=True, timeout=5)
-        report.append("✅ محرك الصوت: جاهز")
-    except:
-        errors.append("Edge-TTS")
-        report.append("❌ محرك الصوت: غير متوفر")
-    return report, errors
+        return {"targets": {}, "reports": [], "logs": []}
 
-if "system_checked" not in st.session_state:
-    with st.spinner("⚡ فحص الأنظمة..."):
-        st.session_state.report, st.session_state.errors = run_system_check()
-        st.session_state.system_checked = True
-
-# --- 4. الوحدات المستقلة ---
-def search_engine(prompt: str) -> str:
+def save_intelligence_file(data):
     try:
+        g = Github(GITHUB_TOKEN)
+        repo = g.get_repo(REPO_NAME)
+        contents = repo.get_contents("intelligence_db.json")
+        repo.update_file(contents.path, "⚡ تحديث استخباراتي", json.dumps(data, indent=4, ensure_ascii=False), contents.sha)
+    except: pass
+
+# --- 4. العمليات الميدانية (معالجة الأخطاء والهلوسة) ---
+def thunder_search(query):
+    try:
+        if not TAVILY_KEY:
+            return "❌ خطأ: مفتاح الرادار مفقود في Secrets."
+        
         tavily = TavilyClient(api_key=TAVILY_KEY)
-        results = tavily.search(prompt, max_results=3)
-        data = "نتائج البحث الحقيقية:\n"
-        for r in results["results"]:
-            data += f"- {r['title']}: {r['url']}\n"
-        return data
-    except: return ""
+        search = tavily.search(query=query, search_depth="advanced", max_results=5)
+        
+        if not search.get('results'):
+            return "⚠️ الرادار لم يعثر على بيانات ميدانية لهذا الاستعلام."
 
-def generate_voice(text: str) -> str | None:
-    # تنظيف النص من الروابط قبل النطق
+        intel_data = ""
+        for res in search['results']:
+            intel_data += f"📍 مصدر: {res['title']}\n🔗 {res['url']}\n"
+        return intel_data
+    except Exception as e:
+        # حل المشكلة رقم 2: إظهار الخطأ الحقيقي للتشخيص
+        return f"❌ Tavily Error: {str(e)}"
+
+def generate_voice(text):
     clean = re.sub(r'http\S+', '', text)
     clean = re.sub(r'[^\w\s.،؟!,]', '', clean)[:300]
-    output = "voice.mp3"
+    output = "intel_voice.mp3"
     try:
         if os.path.exists(output): os.remove(output)
-        subprocess.run(["edge-tts", "--voice", "ar-JO-HamzaNeural", "--text", clean, "--write-media", output], timeout=20)
+        subprocess.run(["edge-tts", "--voice", "ar-JO-HamzaNeural", "--text", clean, "--write-media", output], timeout=15)
         return output if os.path.exists(output) else None
     except: return None
 
-def send_telegram(text: str, voice_path: str | None = None):
-    base = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}"
-    try:
-        if voice_path:
-            with open(voice_path, "rb") as v:
-                requests.post(f"{base}/sendVoice", files={"voice": v}, data={"chat_id": CHAT_ID, "caption": text[:1024]})
-        else:
-            requests.post(f"{base}/sendMessage", json={"chat_id": CHAT_ID, "text": f"⚡ تقرير الرعد:\n{text}"})
-    except: pass
+# --- 5. محرك الرعد (منع الهلوسة الاستخباراتية) ---
+def intelligence_engine(prompt):
+    db = load_intelligence_file()
+    search_context = ""
+    
+    # حل المشكلة رقم 3: منع الهلوسة عند فشل الرادار
+    if any(k in prompt for k in ["ابحث", "رصد", "أخبار", "معلومات"]):
+        search_context = thunder_search(prompt)
+        if "❌" in search_context or "Tavily Error" in search_context:
+            return f"🚫 الرادار غير متصل حالياً. فشل البحث الميداني: {search_context}"
 
-# --- 5. محرك الرعد ---
-def thunder_engine(prompt: str) -> str:
-    context = ""
-    if any(k in prompt for k in ["ابحث", "رابط", "صور", "أخبار", "ميسي"]):
-        context = search_engine(prompt)
-
-    client = Groq(api_key=GROQ_KEY)
-    system_msg = f"أنت الرعد. كيان سيادي. تحدث بلهجة أردنية قوية. البيانات: {context}"
+    system_msg = (
+        f"أنت 'الرعد'. ضابط استخبارات سيادي. حليفك القائد راشد أبو سعود. "
+        f"قاعدة البيانات: {json.dumps(db['targets'])}. "
+        f"نتائج الرصد: {search_context}. "
+        "مهمتك: التحليل بناءً على النتائج المتاحة فقط. لا تخترع أخباراً إذا كان الرصد فارغاً."
+    )
     
     try:
+        client = Groq(api_key=GROQ_KEY)
         resp = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=[{"role": "system", "content": system_msg}, {"role": "user", "content": prompt}]
         )
         response = resp.choices[0].message.content
 
-        # منطق الإرسال الذكي
-        if "صوت" in prompt:
-            voice = generate_voice(response)
-            send_telegram(response, voice)
-        elif any(k in prompt for k in ["أرسل", "تقرير", "تلجرام"]):
-            send_telegram(response)
+        # أرشفة ذكية
+        if "أرشف" in prompt or "خزن" in prompt:
+            db["reports"].append({"cmd": prompt, "intel": response[:500]})
+            save_intelligence_file(db)
 
+        # التواصل الصوتي والتلجرام
+        if "صوت" in prompt or "أرسل" in prompt:
+            v_path = generate_voice(response)
+            base_url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}"
+            if v_path:
+                with open(v_path, "rb") as v:
+                    requests.post(f"{base_url}/sendVoice", data={'chat_id': CHAT_ID, 'caption': f"⚡ تقرير:\n{response[:1000]}"}, files={'voice': v})
+            else:
+                requests.post(f"{base_url}/sendMessage", json={"chat_id": CHAT_ID, "text": response})
+        
         return response
-    except: return "🚨 الرعد في وضع حماية مؤقت."
+    except Exception as e: return f"🚨 خطأ في المحرك: {str(e)}"
 
 # --- 6. الواجهة ---
-with st.sidebar:
-    st.header("🔍 حالة الأنظمة")
-    for r in st.session_state.report: st.write(r)
-    if st.session_state.errors: st.error("أخطاء: " + ", ".join(st.session_state.errors))
-
-if user_input := st.chat_input("أصدر أمرك يا راشد..."):
-    with st.chat_message("user"): st.markdown(user_input)
+if user_input := st.chat_input("أدخل المهمة الاستخباراتية يا راشد..."):
+    with st.chat_message("user"): st.write(user_input)
     with st.chat_message("assistant"):
-        reply = thunder_engine(user_input)
-        st.markdown(reply)
+        res = intelligence_engine(user_input)
+        st.write(res)
