@@ -5,6 +5,9 @@ from tavily import TavilyClient
 import requests, os, re, subprocess
 from bs4 import BeautifulSoup
 
+# --- 0. تعريف القائد (لتجاوز تحذيرات Tavily) ---
+IS_COMMANDER_RASHED = True  # True لأنك أنت القائد راشد
+
 # --- 1. الهوية السيادية ---
 st.set_page_config(page_title="Thunder Absolute", page_icon="⚡", layout="wide")
 st.title("⚡ الرعد السيادي: النسخة المطلقة")
@@ -22,6 +25,11 @@ CHAT_ID = st.secrets["CHAT_ID"]
 
 # --- 3. الأدوات الفتاكة ---
 def thunder_intel_radar(query, max_results=5):
+    if not IS_COMMANDER_RASHED:
+        print("⚠️ الرعد لا يعرف القائد، البحث مؤجل.")
+        return "⚠️ لم يتم تنفيذ البحث."
+
+    # البحث عبر Tavily
     try:
         tavily = TavilyClient(api_key=TAVILY_KEY)
         search = tavily.search(query=query, search_depth="advanced", max_results=max_results)
@@ -69,11 +77,9 @@ def generate_absolute_voice(text, voice_primary="ar-SA-ZaidNeural", voice_fallba
         os.remove(output)
 
     try:
-        # تجربة الصوت الرئيسي
         subprocess.run(["edge-tts", "--voice", voice_primary, "--text", clean, "--write-media", output], timeout=60)
         if os.path.exists(output) and os.path.getsize(output) > 0:
             return [output]
-        # fallback الصوت البديل لو فشل
         subprocess.run(["edge-tts", "--voice", voice_fallback, "--text", clean, "--write-media", output], timeout=60)
         if os.path.exists(output) and os.path.getsize(output) > 0:
             return [output]
