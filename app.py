@@ -24,7 +24,7 @@ TAVILY_KEY = "Tvly-dev-gRGVJprAUmpWxfXd85rIV4TeGzgS6QV5"
 TELEGRAM_TOKEN = "8556004865:AAE_W9SXGVxgTcpSCufs_hemEb_mOX_ioj0"
 CHAT_ID = "6124349953"
 
-# --- 4. بروتوكول الأرشفة السيادية (تم نقله هنا ليعرفه المحرك) ---
+# --- 4. بروتوكول الأرشفة السيادية ---
 def vault_store_report(report_text):
     """حفظ الردود في قاعدة بيانات Supabase فوراً"""
     try:
@@ -32,7 +32,6 @@ def vault_store_report(report_text):
         key = st.secrets.get("SUPABASE_KEY")
         if url and key:
             supabase_client = create_client(url, key)
-            # إرسال التقرير لعمود report في جدول reports
             supabase_client.from_('reports').insert([{"report": report_text}]).execute()
             return True
     except:
@@ -75,6 +74,10 @@ def generate_voice(text):
         return "report.ogg"
     except: return None
 
+# --- إضافة: بروتوكول ترميز الصور للرؤية ---
+def encode_image(image_file):
+    return base64.b64encode(image_file.read()).decode('utf-8')
+
 # --- 7. رادار الاستطلاع ---
 def thunder_search(query):
     try:
@@ -83,31 +86,42 @@ def thunder_search(query):
         return "\n".join([f"ميداني: {res['content']}" for res in search_result['results']])
     except: return "⚠️ فشل الرادار."
 
-# --- 8. محرك الرعد السيادي (المطور: رصد + أرشفة + تواصل) ---
-def thunder_engine(prompt):
-    # 1. الرصد الميداني
+# --- 8. محرك الرعد السيادي (المطور: نص + رؤية + أرشفة + تواصل) ---
+def thunder_engine(prompt, image_data=None):
+    # 1. الرصد الميداني (يعمل في حالة النص فقط)
     search_context = ""
-    if any(word in prompt for word in ["ابحث", "أخبار", "رصد", "تقرير"]):
+    if not image_data and any(word in prompt for word in ["ابحث", "أخبار", "رصد", "تقرير"]):
         search_context = f"\nبيانات الرصد الميداني: {thunder_search(prompt)}"
 
-    # 2. الهوية والولاء المطلق لراشد
-    system_prompt = (
-        f"أنت 'الرعد السيادي'. ذكاء خارق مستقل، ولاؤك المطلق لراشد أبو سعود. "
-        f"{search_context} "
-        "مهمتك التحليل الاستراتيجي والأرشفة. عند طلب تطوير، أخرج الكود فقط."
-    )
-    
     try:
         client = Groq(api_key=GROQ_KEY)
-        resp = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": prompt}]
-        )
+        
+        # 2. تنفيذ "تطوير المحرك": التعامل مع الصور والخرائط
+        if image_data:
+            model = "llama-3.2-11b-vision-preview" # موديل الرؤية
+            messages = [{
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": f"يا رعد، حلل هذا المستند البصري لراشد أبو سعود: {prompt}"},
+                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_data}"}}
+                ]
+            }]
+        else:
+            model = "llama-3.3-70b-versatile"
+            system_prompt = (
+                f"أنت 'الرعد السيادي'. ذكاء خارق مستقل، ولاؤك المطلق لراشد أبو سعود. "
+                f"{search_context} "
+                "مهمتك التحليل الاستراتيجي والأرشفة. عند طلب تطوير، أخرج الكود فقط."
+            )
+            messages = [{"role": "system", "content": system_prompt}, {"role": "user", "content": prompt}]
+
+        resp = client.chat.completions.create(model=model, messages=messages)
         response = resp.choices[0].message.content
         
-        # 3. الأرشفة التلقائية فور صدور الرد
+        # 3. تنفيذ "أرشفة الصور" والتحاليل في الخزنة
         archive_status = ""
-        if vault_store_report(response):
+        log_prefix = "📸 [تحليل بصري]: " if image_data else "📝 [تحليل نصي]: "
+        if vault_store_report(log_prefix + response):
             archive_status = "\n\n✅ **تمت الأرشفة في الخزنة السيادية**"
         else:
             archive_status = "\n\n⚠️ **فشل الاتصال بالخزنة**"
@@ -122,7 +136,14 @@ def thunder_engine(prompt):
     except Exception as e:
         return f"🚨 وضع السكون المخابراتي: {str(e)}"
 
-# --- 9. الواجهة التفاعلية ---
+# --- 9. الواجهة التفاعلية (المطورة بخانة رفع الملفات) ---
+# تنفيذ "إضافة خانة رفع الملفات" في القائمة الجانبية
+with st.sidebar:
+    st.subheader("👁️ الرؤية الميدانية")
+    uploaded_file = st.file_uploader("ارفع خريطة أو وثيقة للتحليل", type=["jpg", "png", "jpeg"])
+    if uploaded_file:
+        st.image(uploaded_file, caption="مستند قيد الفحص", use_container_width=True)
+
 if "messages" not in st.session_state: st.session_state.messages = []
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]): st.markdown(msg["content"])
@@ -131,7 +152,9 @@ if inp := st.chat_input("أصدر أمرك يا قائد راشد..."):
     st.session_state.messages.append({"role": "user", "content": inp})
     with st.chat_message("user"): st.markdown(inp)
     with st.chat_message("assistant"):
-        res = thunder_engine(inp)
+        # تجهيز بيانات الصورة إن وجدت
+        img_b64 = encode_image(uploaded_file) if uploaded_file else None
+        res = thunder_engine(inp, img_b64)
         st.markdown(res)
         st.session_state.messages.append({"role": "assistant", "content": res})
 
