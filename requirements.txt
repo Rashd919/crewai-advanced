@@ -14,4 +14,3 @@ gTTS
 fpdf
 tavily-python
 edge-tts
-requests
