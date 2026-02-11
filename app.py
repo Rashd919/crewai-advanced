@@ -7,7 +7,6 @@ import json, base64, requests, os, re, subprocess
 # --- 1. بروتوكول الفحص الذاتي (System Self-Check) ---
 def run_system_check():
     report = []
-    # فحص المفاتيح
     keys = {
         "GROQ_API_KEY": st.secrets.get("GROQ_API_KEY"),
         "TAVILY_KEY": st.secrets.get("TAVILY_KEY"),
@@ -15,28 +14,26 @@ def run_system_check():
         "TELEGRAM_TOKEN": st.secrets.get("TELEGRAM_TOKEN")
     }
     for name, key in keys.items():
-        if key: report.append(f"✅ {name}: جاهز")
-        else: report.append(f"❌ {name}: مفقود!")
+        if key: report.append(f"{} {}: ")
+        else: report.append(f"{} {}: ")
     
-    # فحص محرك الصوت
     try:
         result = subprocess.run(["edge-tts", "--list-voices"], capture_output=True)
-        if result.returncode == 0: report.append("✅ محرك الصوت: جاهز")
-    except: report.append("❌ محرك الصوت: غير مستقر")
+        if result.returncode == 0: report.append("{} ": "جاهز")
+    except: report.append("{} ": "غير مستقر")
     
     return report
 
 # --- 2. الهوية وثبات الجلسة ---
-st.set_page_config(page_title="Thunder Self-Evolving", page_icon="⚡", layout="wide")
-st.title("⚡ الرعد: النواة ذاتية التحديث")
+st.set_page_config(page_title="Thunder Self-Evolving", page_icon="", layout="wide")
+st.title("Thunder Self-Evolving")
 
-# تشغيل الفحص عند بدء التطبيق
 if "check_done" not in st.session_state:
     st.session_state.check_report = run_system_check()
     st.session_state.check_done = True
 
 with st.sidebar:
-    st.header("🔍 تقرير الفحص الذاتي")
+    st.header("System Check Report")
     for r in st.session_state.check_report:
         st.write(r)
 
@@ -52,48 +49,41 @@ TELEGRAM_TOKEN = st.secrets["TELEGRAM_TOKEN"]
 CHAT_ID = st.secrets["CHAT_ID"]
 
 def update_source_code(new_code):
-    """دالة السيادة: تعديل الكود المصدري ورفعه لـ GitHub فوراً"""
     try:
         auth = Auth.Token(GITHUB_TOKEN)
         g = Github(auth=auth)
         repo = g.get_repo(REPO_NAME)
         contents = repo.get_contents("app.py")
-        repo.update_file(contents.path, "⚡ الأمر السيادي: تحديث الكود الذاتي", new_code, contents.sha)
+        repo.update_file(contents.path, "System Update", new_code, contents.sha)
         return True
     except Exception as e:
-        st.error(f"🚨 فشل التحديث السيادي: {str(e)}")
+        st.error(f"Update failed: {str(e)}")
         return False
 
 # --- 4. المحرك المركزي (مع منطق التعديل الذاتي) ---
 def thunder_engine(prompt):
-    # إذا كان الأمر هو "تعديل الكود"
-    if "نفذ الأمر السيادي" in prompt or "عدل كودك" in prompt:
-        # استرجاع الكود الحالي
-        auth = Auth.Token(GITHUB_TOKEN)
-        current_code = Github(auth=auth).get_repo(REPO_NAME).get_contents("app.py").decoded_content.decode()
+    if "update code" in prompt or "modify code" in prompt:
+        current_code = Github(auth=Auth.Token(GITHUB_TOKEN)).get_repo(REPO_NAME).get_contents("app.py").decoded_content.decode()
         
-        # طلب التعديل من LLM
-        system_update_msg = f"أنت مبرمج خبير. هذا هو كودي الحالي:\n{current_code}\n\nالمطلوب من القائد راشد: {prompt}. أعد كتابة الكود كاملاً مع التعديلات المطلوبة فقط بدون أي شرح."
+        system_update_msg = f"You are a skilled programmer. This is my current code:\n{current_code}\n\nRequired by Commander Rashid: {prompt}. Rewrite the code with the required modifications only, without any explanation."
         
         try:
             client = Groq(api_key=GROQ_KEY)
             resp = client.chat.completions.create(
                 model="llama-3.3-70b-versatile",
-                messages=[{"role": "system", "content": system_update_msg}, {"role": "user", "content": "أعطني الكود المحدث الآن"}]
+                messages=[{"role": "system", "content": system_update_msg}, {"role": "user", "content": "Give me the updated code now"}]
             )
             new_code = resp.choices[0].message.content
-            # تنظيف الكود من علامات الماركداون إذا وجدت
-            new_code = re.sub(r'```python|```', '', new_code).strip()
+            new_code = re.sub(r'|', '', new_code).strip()
             
             if update_source_code(new_code):
-                return "✅ تم تنفيذ الأمر السيادي يا راشد. جاري إعادة تشغيل النواة بالكود الجديد خلال ثوانٍ..."
+                return "Code updated successfully. Restarting the system with the new code..."
             else:
-                return "❌ فشل تحديث النواة."
+                return "Update failed."
         except Exception as e:
-            return f"🚨 خطأ في معالجة التعديل: {str(e)}"
+            return f"Error processing modification: {str(e)}"
 
-    # المنطق العادي للرعد (بحث وصوت)
-    system_msg = "أنت 'الرعد'. ضابط أردني سيادي. حليفك راشد أبو سعود. تحدث بلهجة أردنية عسكرية."
+    system_msg = "You are 'Thunder'. A Jordanian autonomous officer. Allied with Rashid Abu Saud. Speak in a Jordanian military dialect."
     client = Groq(api_key=GROQ_KEY)
     resp = client.chat.completions.create(
         model="llama-3.3-70b-versatile",
@@ -105,7 +95,7 @@ def thunder_engine(prompt):
 for message in st.session_state.messages:
     with st.chat_message(message["role"]): st.write(message["content"])
 
-if user_input := st.chat_input("أصدر أمرك يا راشد..."):
+if user_input := st.chat_input("Enter your command..."):
     st.session_state.messages.append({"role": "user", "content": user_input})
     with st.chat_message("user"): st.write(user_input)
     with st.chat_message("assistant"):
