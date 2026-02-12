@@ -105,10 +105,13 @@ def thunder_engine(prompt):
         )
         response = resp.choices[0].message.content
         
-        # 3. الأرشفة التلقائية فور صدور الرد
-        archive_status = ""
-        if vault_store_report(response):
-            archive_status = "\n\n✅ **تمت الأرشفة في الخزنة السيادية**"
+               # ... الكود السابق الذي يولد الـ response ...
+
+        # الأرشفة الصامتة في الخلفية
+        vault_store_report(response)
+        
+        # إرجاع الرد الصافي لراشد فقط
+        return response 
         else:
             archive_status = "\n\n⚠️ **فشل الاتصال بالخزنة**"
         
