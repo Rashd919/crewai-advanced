@@ -1,94 +1,117 @@
 import streamlit as st
 from groq import Groq
 from tavily import TavilyClient
+import base64, requests, re
 from datetime import datetime, timedelta
 
-# --- 1. بروتوكول الهوية السيادية ---
+# --- 1. إعدادات الهوية والبيانات السرية ---
 local_now = datetime.utcnow() + timedelta(hours=3)
-clock_face = local_now.strftime("%H:%M:%S")
+clock_face = local_now.strftime("%H:%M")
 
-st.set_page_config(page_title="Thunder Ultra Pro", page_icon="⚡", layout="wide")
+st.set_page_config(page_title="Thunder Gemini Ultimate", page_icon="⚡", layout="wide")
 
-# تهيئة العداد وجلسة العمل (إصلاح مشكلة الانهيار)
+# استرجاع المفاتيح من Secrets
+GROQ_KEY = st.secrets.get("GROQ_API_KEY")
+TAVILY_KEY = "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"
+TELEGRAM_TOKEN = st.secrets.get("TELEGRAM_TOKEN")
+TELEGRAM_CHAT_ID = st.secrets.get("TELEGRAM_CHAT_ID")
+
 if "history" not in st.session_state: st.session_state.history = []
-if "count" not in st.session_state: st.session_state.count = 0
 
-# --- 2. الشريط الجانبي (Sidebar) - نسخة Gemini 100% ---
+# --- 2. ترسانة الوظائف الميدانية (صوت، تلغرام، بحث) ---
+
+def play_voice(text):
+    """تحويل النص إلى صوت مسموع"""
+    clean_text = re.sub(r'[^\w\s]', '', text)
+    st.components.v1.html(f"""
+        <script>
+        var msg = new SpeechSynthesisUtterance('{clean_text[:300]}');
+        msg.lang = 'ar-SA';
+        window.speechSynthesis.speak(msg);
+        </script>
+    """, height=0)
+
+def send_to_telegram(message):
+    """إرسال التقرير إلى تلغرام راشد"""
+    try:
+        url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+        requests.post(url, data={"chat_id": TELEGRAM_CHAT_ID, "text": message})
+        return True
+    except: return False
+
+def advanced_radar(query):
+    """البحث الميداني (رادار تافيلي)"""
+    try:
+        tavily = TavilyClient(api_key=TAVILY_KEY)
+        search = tavily.search(query=query, search_depth="advanced")
+        return search['results'][0]['content']
+    except: return "الرادار لم يرصد بيانات جديدة."
+
+# --- 3. تصميم واجهة Gemini (مطابق لصورك) ---
+
 with st.sidebar:
-    st.markdown("<h2 style='color: #FF0000;'>⚡ الرعد</h2>", unsafe_allow_html=True)
-    st.write(f"مرحباً **أبو سعود**، من أين نبدأ؟")
+    st.markdown(f"<h1 style='color: #FF0000;'>⚡ الرعد</h1>", unsafe_allow_html=True)
+    st.write(f"مرحباً **أبو سعود**")
     
+    # ميزات سريعة (من صورتك رقم 3)
     st.button("🎨 إنشاء صورة", use_container_width=True)
     st.button("📚 ساعدني في التعلّم", use_container_width=True)
-    st.button("✨ عزز إنتاجيتي", use_container_width=True)
     
     st.divider()
-    st.markdown("### المحادثات الأخيرة")
-    with st.expander("💬 السجل الميداني", expanded=True):
-        st.caption("شبكة Molthub الاستخباراتية")
-        st.caption("تحليل مشروع الرعد")
-        st.caption("أزمة جزيرة إبستين")
+    # المحادثات السابقة (من صورتك رقم 7)
+    with st.expander("💬 السجل الاستخباراتي", expanded=True):
+        st.caption("شبكة Molthub")
+        st.caption("تحليل إبستين")
+        st.caption("سعر الذهب بالأردن")
     
     st.divider()
+    # ملاحظات سرية (من صورتك رقم 1)
     st.markdown("### 🕵️ ملاحظات سرية")
-    st.text_area("سجل تحركات الأهداف...", height=100, key="secure_notes")
-    st.button("حفظ في الذاكرة")
+    st.text_area("سجل هنا...", height=100, key="v20_notes")
 
-# --- 3. الواجهة المركزية وأيقونات التفاعل ---
-st.markdown(f"""
-    <div style="text-align: center; border: 2px solid #FF0000; padding: 15px; border-radius: 15px; background-color: #1a1a1a;">
-        <h2 style="color: #FF0000; margin: 0;">⚡ مركز القيادة | {clock_face}</h2>
-    </div>
-""", unsafe_allow_html=True)
+# --- 4. رصف الأزرار الأفقية (إصلاح صورتك رقم 11) ---
+def show_action_bar(idx, text):
+    cols = st.columns([0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 10])
+    if cols[0].button("👍", key=f"lk_{idx}"): st.toast("تم")
+    if cols[1].button("👎", key=f"dk_{idx}"): st.toast("تم")
+    if cols[2].button("🔄", key=f"re_{idx}"): st.rerun()
+    if cols[3].button("📤", key=f"tg_{idx}"): 
+        if send_to_telegram(text): st.success("أُرسل لتلغرام")
+    if cols[4].button("📋", key=f"cp_{idx}"): st.success("تم النسخ")
+    if cols[5].button("🔊", key=f"vc_{idx}"): play_voice(text)
+    cols[6].button("⋮", key=f"mr_{idx}")
 
-def show_feedback_icons(index):
-    cols = st.columns([1,1,1,1,1,1,10])
-    icons = ["👍", "👎", "🔄", "📤", "📋", "⋮"]
-    for i, icon in enumerate(icons):
-        cols[i].button(icon, key=f"btn_{index}_{i}")
+# --- 5. محرك العمليات ---
 
-# --- 4. مركز الملحقات المطور (مطابق لصورتك الأخيرة) ---
-def show_upload_tools():
-    with st.expander("➕ إرفاق وسائط وملفات (الصور، الكاميرا، المستندات)", expanded=False):
-        c1, c2, c3 = st.columns(3)
-        img = c1.file_uploader("🖼️ رفع صورة للتحليل", type=['png', 'jpg', 'jpeg'])
-        doc = c2.file_uploader("📎 رفع ملف استخباراتي", type=['pdf', 'txt'])
-        if c3.button("📷 تشغيل الكاميرا"): st.info("جاري طلب إذن الوصول للكاميرا...")
-        if img: st.image(img, caption="تم رصد الصورة بنجاح", width=200)
-
-# --- 5. محرك الرعد الاستخباراتي ---
-def thunder_engine(prompt):
-    TAVILY_KEY = "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"
-    try:
-        # البحث الميداني لضمان دقة 100% (مثل سعر الذهب 101.200)
-        tavily = TavilyClient(api_key=TAVILY_KEY)
-        intel = tavily.search(query=prompt, search_depth="advanced")
-        context = intel['results'][0]['content']
-    except: context = "البيانات الميدانية غير متوفرة."
-
-    try:
-        client = Groq(api_key=st.secrets["GROQ_API_KEY"])
-        sys_msg = f"أنت الرعد، نسخة Gemini لراشد. التوقيت {clock_face}. السياق الميداني: {context}"
-        resp = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=[{"role": "system", "content": sys_msg}, {"role": "user", "content": prompt}]
-        )
-        return resp.choices[0].message.content
-    except: return "🚨 خطأ: تأكد من ضبط GROQ_API_KEY في Secrets."
-
-# --- 6. ساحة الحوار ---
 for i, m in enumerate(st.session_state.history):
     with st.chat_message(m["role"]):
         st.markdown(m["content"])
-        if m["role"] == "assistant": show_feedback_icons(i)
+        if m["role"] == "assistant": show_action_bar(i, m["content"])
 
-show_upload_tools()
+# مركز الملحقات (أفقي)
+st.divider()
+c1, c2, c3, c4 = st.columns(4)
+c1.write("📓 NotebookLM")
+up_img = c3.file_uploader("🖼️ صور", type=['png', 'jpg'], label_visibility="collapsed")
+c4.button("📷 كاميرا")
 
-if inp := st.chat_input("أصدر أوامرك يا قائد..."):
+if inp := st.chat_input("أصدر أوامرك يا قائد أبو سعود..."):
     st.session_state.history.append({"role": "user", "content": inp})
     with st.chat_message("user"): st.markdown(inp)
+    
     with st.chat_message("assistant"):
-        res = thunder_engine(inp)
-        st.markdown(res)
-        show_feedback_icons(len(st.session_state.history))
-        st.session_state.history.append({"role": "assistant", "content": res})
+        # تشغيل الرادار تلقائياً للبحث
+        context = advanced_radar(inp)
+        
+        client = Groq(api_key=GROQ_KEY)
+        # دمج الشخصية والبحث
+        sys_msg = f"أنت الرعد نسخة Gemini لراشد. التوقيت {clock_face}. السياق: {context}"
+        
+        resp = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[{"role": "system", "content": sys_msg}, {"role": "user", "content": inp}]
+        )
+        final_res = resp.choices[0].message.content
+        st.markdown(final_res)
+        show_action_bar(len(st.session_state.history), final_res)
+        st.session_state.history.append({"role": "assistant", "content": final_res})
