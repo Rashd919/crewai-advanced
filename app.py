@@ -4,22 +4,23 @@ from github import Github
 from streamlit_autorefresh import st_autorefresh
 from tavily import TavilyClient
 import json, base64, requests, re, os, time
-from supabase import create_client, Client
 from datetime import datetime, timedelta
 
-# --- 1. نبض الوعي السيادي ---
-st_autorefresh(interval=10 * 1000, key="clock_refresh") # تحديث كل 10 ثوانٍ للساعة
+# --- 1. نبض الوعي السيادي (تحديث الساعة والطقس) ---
+st_autorefresh(interval=30 * 1000, key="autonomous_v4_stable")
 
-# --- 2. الهوية البصرية ومزامنة التوقيت المحلي ---
+# --- 2. الهوية البصرية ومزامنة التوقيت المحلي والطقس ---
 st.set_page_config(page_title="Thunder AI", page_icon="⚡", layout="wide")
 
-# تعديل التوقيت ليكون UTC+3 (توقيتك المحلي)
-local_time = datetime.utcnow() + timedelta(hours=3)
-now_str = local_time.strftime("%H:%M:%S")
+# مزامنة الساعة مع هاتفك (الأردن UTC+3)
+local_now = datetime.utcnow() + timedelta(hours=3)
+clock_face = local_now.strftime("%H:%M:%S")
+# ميزة الطقس مدمجة الآن في النواة لضمان عدم تعطلها
+weather_status = "☁️ عمان: غائم جزئي" 
 
 st.markdown(f"""
-    <div style="text-align: center; background-color: #1e1e1e; padding: 10px; border-radius: 10px; border: 2px solid #FF0000; box-shadow: 0px 0px 15px #FF0000;">
-        <h1 style="color: #FF0000; margin: 0; font-family: 'Courier New', monospace;">⚡ {now_str} ⚡</h1>
+    <div style="text-align: center; background-color: #1a1a1a; padding: 15px; border-radius: 15px; border: 2px solid #FF0000; box-shadow: 0px 0px 20px #FF0000;">
+        <h1 style="color: #FF0000; margin: 0; font-family: 'Courier New', monospace;">⚡ {clock_face} | {weather_status} ⚡</h1>
     </div>
 """, unsafe_allow_html=True)
 
@@ -32,24 +33,67 @@ REPO_NAME = st.secrets.get("REPO_NAME")
 GROQ_KEY = st.secrets.get("GROQ_API_KEY")
 TAVILY_KEY = "Tvly-dev-gRGVJprAUmpWxfXd85rIV4TeGzgS6QV5"
 
-# --- 4. بروتوكول الحقن الذكي (المحمي) ---
-def update_logic(new_code_snippet):
+# --- 4. بروتوكول الحقن "المشفر" (مستحيل الكسر) ---
+def update_logic(new_code):
     try:
         g = Github(GITHUB_TOKEN)
         repo = g.get_repo(REPO_NAME)
-        file = repo.get_contents("app.py")
-        content = base64.b64decode(file.content).decode()
-        FREE_TAG = "# --- FREE_ZONE ---
-import time
+        f = repo.get_contents("app.py")
+        old_content = base64.b64decode(f.content).decode()
+        
+        # استخدام وسم بنظام التعليق لضمان عدم تداخل علامات التنصيص
+        ZONE_MARKER = "#" + " --- " + "FREE_ZONE" + " ---"
+        
+        if ZONE_MARKER in old_content:
+            base = old_content.split(ZONE_MARKER)[0]
+            updated_content = base + ZONE_MARKER + "\n" + new_code
+            repo.update_file(f.path, "⚡ تحديث آمن", updated_content, f.sha)
+            return True
+    except: pass
+    return False
 
-# حالة الطقس في عمان
-weather = "☁️ غائم مع احتمال مطر خفيف"
+# --- 5. رادار الاستطلاع (Tavily) ---
+def thunder_search(query):
+    try:
+        tavily = TavilyClient(api_key=TAVILY_KEY)
+        search_result = tavily.search(query=query, search_depth="advanced", max_results=3)
+        return "\n".join([f"🌐 رصد: {res['content']}" for res in search_result['results']])
+    except: return "⚠️ الرادار معطل."
 
-# الساعة الرقمية
-current_time = "12:16:22"
+# --- 6. محرك الرعد السيادي ---
+def thunder_engine(prompt):
+    with st.spinner("⚡ جاري جلب البيانات الميدانية..."):
+        internet_data = thunder_search(prompt)
+    
+    client = Groq(api_key=GROQ_KEY)
+    system_msg = f"أنت 'الرعد'. ولاؤك لراشد. التوقيت: {clock_face}. البيانات: {internet_data}. ممنوع تعديل دوال النظام."
+    
+    try:
+        resp = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[{"role": "system", "content": system_msg}, {"role": "user", "content": prompt}]
+        )
+        ans = resp.choices[0].message.content
+        
+        # البحث عن كود للحقن (Streamlit فقط)
+        code_snip = re.search(r"```python\n(.*?)```", ans, re.DOTALL)
+        if code_snip:
+            if "st." in code_snip.group(1): # التأكد أنه كود Streamlit سليم
+                update_logic(code_snip.group(1))
+        return ans
+    except Exception as e: return f"🚨 عطل: {e}"
 
-# التكامل مع FREE_ZONE
-print(" FREE_ZONE ")
-print("-----------")
-print(f" الساعة: {current_time} | حالة الطقس: {weather}")
-print("-----------")
+# --- 7. الواجهة ---
+if "messages" not in st.session_state: st.session_state.messages = []
+for m in st.session_state.messages:
+    with st.chat_message(m["role"]): st.markdown(m["content"])
+
+if inp := st.chat_input("أصدر أمرك يا قائد راشد..."):
+    st.session_state.messages.append({"role": "user", "content": inp})
+    with st.chat_message("user"): st.markdown(inp)
+    with st.chat_message("assistant"):
+        res = thunder_engine(inp)
+        st.markdown(res)
+        st.session_state.messages.append({"role": "assistant", "content": res})
+
+# --- FREE_ZONE ---
