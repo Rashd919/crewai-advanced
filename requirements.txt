@@ -20,3 +20,4 @@ google-generativeai
 python-dotenv
 pandas
 scapy
+socket
