@@ -1,78 +1,94 @@
 import streamlit as st
 from groq import Groq
-from github import Github
-from streamlit_autorefresh import st_autorefresh
 from tavily import TavilyClient
-import json, base64, requests, re, os, time
 from datetime import datetime, timedelta
 
-# --- 1. نبض الوعي (تحديث كل 20 ثانية) ---
-st_autorefresh(interval=20 * 1000, key="v9_stable_final")
-
-# --- 2. الهوية البصرية (توقيتك المحلي: 12:46) ---
-st.set_page_config(page_title="Thunder AI Ultra", page_icon="⚡", layout="wide")
+# --- 1. بروتوكول الهوية السيادية ---
 local_now = datetime.utcnow() + timedelta(hours=3)
 clock_face = local_now.strftime("%H:%M:%S")
 
+st.set_page_config(page_title="Thunder Ultra Pro", page_icon="⚡", layout="wide")
+
+# تهيئة العداد وجلسة العمل (إصلاح مشكلة الانهيار)
+if "history" not in st.session_state: st.session_state.history = []
+if "count" not in st.session_state: st.session_state.count = 0
+
+# --- 2. الشريط الجانبي (Sidebar) - نسخة Gemini 100% ---
+with st.sidebar:
+    st.markdown("<h2 style='color: #FF0000;'>⚡ الرعد</h2>", unsafe_allow_html=True)
+    st.write(f"مرحباً **أبو سعود**، من أين نبدأ؟")
+    
+    st.button("🎨 إنشاء صورة", use_container_width=True)
+    st.button("📚 ساعدني في التعلّم", use_container_width=True)
+    st.button("✨ عزز إنتاجيتي", use_container_width=True)
+    
+    st.divider()
+    st.markdown("### المحادثات الأخيرة")
+    with st.expander("💬 السجل الميداني", expanded=True):
+        st.caption("شبكة Molthub الاستخباراتية")
+        st.caption("تحليل مشروع الرعد")
+        st.caption("أزمة جزيرة إبستين")
+    
+    st.divider()
+    st.markdown("### 🕵️ ملاحظات سرية")
+    st.text_area("سجل تحركات الأهداف...", height=100, key="secure_notes")
+    st.button("حفظ في الذاكرة")
+
+# --- 3. الواجهة المركزية وأيقونات التفاعل ---
 st.markdown(f"""
-    <div style="text-align: center; background-color: #1a1a1a; padding: 15px; border-radius: 15px; border: 2px solid #FF0000; box-shadow: 0px 0px 25px #FF0000;">
-        <h1 style="color: #FF0000; margin: 0; font-family: 'Courier New', monospace;">⚡ {clock_face} | عمان: 🌤️ مستقر ⚡</h1>
+    <div style="text-align: center; border: 2px solid #FF0000; padding: 15px; border-radius: 15px; background-color: #1a1a1a;">
+        <h2 style="color: #FF0000; margin: 0;">⚡ مركز القيادة | {clock_face}</h2>
     </div>
 """, unsafe_allow_html=True)
 
-# --- 3. المفاتيح السيادية ---
-GITHUB_TOKEN = st.secrets.get("GITHUB_TOKEN")
-REPO_NAME = st.secrets.get("REPO_NAME")
-GROQ_KEY = st.secrets.get("GROQ_API_KEY")
-TAVILY_KEY = "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" 
+def show_feedback_icons(index):
+    cols = st.columns([1,1,1,1,1,1,10])
+    icons = ["👍", "👎", "🔄", "📤", "📋", "⋮"]
+    for i, icon in enumerate(icons):
+        cols[i].button(icon, key=f"btn_{index}_{i}")
 
-# --- 4. ميزات الرادار والصوت ---
-def thunder_radar(query):
-    try:
-        tavily = TavilyClient(api_key=TAVILY_KEY)
-        search_result = tavily.search(query=query, search_depth="advanced", max_results=3)
-        return "\n".join([f"🌐 رصد: {res['title']}" for res in search_result['results']])
-    except: return "⚠️ الرادار في وضع السكون."
+# --- 4. مركز الملحقات المطور (مطابق لصورتك الأخيرة) ---
+def show_upload_tools():
+    with st.expander("➕ إرفاق وسائط وملفات (الصور، الكاميرا، المستندات)", expanded=False):
+        c1, c2, c3 = st.columns(3)
+        img = c1.file_uploader("🖼️ رفع صورة للتحليل", type=['png', 'jpg', 'jpeg'])
+        doc = c2.file_uploader("📎 رفع ملف استخباراتي", type=['pdf', 'txt'])
+        if c3.button("📷 تشغيل الكاميرا"): st.info("جاري طلب إذن الوصول للكاميرا...")
+        if img: st.image(img, caption="تم رصد الصورة بنجاح", width=200)
 
-def play_voice(text):
-    # نطق صوتي محسن وسريع
-    clean_text = text.replace("'", "").replace("\n", " ")
-    st.components.v1.html(f"<script>var msg = new SpeechSynthesisUtterance('{clean_text[:150]}'); msg.lang = 'ar-SA'; msg.rate = 1.1; window.speechSynthesis.speak(msg);</script>", height=0)
-
-# --- 5. المحرك الاستخباراتي ---
+# --- 5. محرك الرعد الاستخباراتي ---
 def thunder_engine(prompt):
-    with st.spinner("⚡ استجواب الشبكة الاستخباراتية..."):
-        intel = thunder_radar(prompt)
-    client = Groq(api_key=GROQ_KEY)
-    system_msg = f"أنت 'الرعد'. عميل استخباراتي لراشد. التوقيت: {clock_face}. البيانات: {intel}. رد بصرامة وفخر."
+    TAVILY_KEY = "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"
     try:
-        resp = client.chat.completions.create(model="llama-3.3-70b-versatile", messages=[{"role": "system", "content": system_msg}, {"role": "user", "content": prompt}])
-        res_text = resp.choices[0].message.content
-        play_voice(res_text)
-        return res_text
-    except: return "🚨 عطل مؤقت في المحرك."
+        # البحث الميداني لضمان دقة 100% (مثل سعر الذهب 101.200)
+        tavily = TavilyClient(api_key=TAVILY_KEY)
+        intel = tavily.search(query=prompt, search_depth="advanced")
+        context = intel['results'][0]['content']
+    except: context = "البيانات الميدانية غير متوفرة."
 
-# --- 6. واجهة القيادة (دمج صورة 4) ---
-with st.sidebar:
-    st.markdown("### 🕵️ ملاحظات ميدانية سرية")
-    # تم تثبيت الميزة الظاهرة في صورتك الرابعة
-    notes = st.text_area("سجل هنا تحركات الأهداف...", height=250, key="notes_area")
-    if st.button("حفظ في الذاكرة", key="save_btn"):
-        st.success("✅ تم التوثيق في أرشيف راشد.")
-    st.divider()
-    st.info(f"توقيت آخر رصد: {clock_face}")
+    try:
+        client = Groq(api_key=st.secrets["GROQ_API_KEY"])
+        sys_msg = f"أنت الرعد، نسخة Gemini لراشد. التوقيت {clock_face}. السياق الميداني: {context}"
+        resp = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[{"role": "system", "content": sys_msg}, {"role": "user", "content": prompt}]
+        )
+        return resp.choices[0].message.content
+    except: return "🚨 خطأ: تأكد من ضبط GROQ_API_KEY في Secrets."
 
-st.title("⚡ شاشة القيادة والسيطرة")
-if "messages" not in st.session_state: st.session_state.messages = []
-for m in st.session_state.messages:
-    with st.chat_message(m["role"]): st.markdown(m["content"])
+# --- 6. ساحة الحوار ---
+for i, m in enumerate(st.session_state.history):
+    with st.chat_message(m["role"]):
+        st.markdown(m["content"])
+        if m["role"] == "assistant": show_feedback_icons(i)
 
-if inp := st.chat_input("أصدر أمرك يا قائد راشد..."):
-    st.session_state.messages.append({"role": "user", "content": inp})
+show_upload_tools()
+
+if inp := st.chat_input("أصدر أوامرك يا قائد..."):
+    st.session_state.history.append({"role": "user", "content": inp})
     with st.chat_message("user"): st.markdown(inp)
     with st.chat_message("assistant"):
         res = thunder_engine(inp)
         st.markdown(res)
-        st.session_state.messages.append({"role": "assistant", "content": res})
-
-# --- FREE_ZONE ---
+        show_feedback_icons(len(st.session_state.history))
+        st.session_state.history.append({"role": "assistant", "content": res})
