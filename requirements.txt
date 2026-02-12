@@ -17,3 +17,4 @@ edge-tts
 beautifulsoup4
 supabase
 google-generativeai
+python-dotenv
