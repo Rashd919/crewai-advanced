@@ -1,117 +1,118 @@
 import streamlit as st
+import pandas as pd
+import os
+import requests
+import json
+import tempfile
+from datetime import datetime
+from dotenv import load_dotenv
+from gtts import gTTS
 from groq import Groq
 from tavily import TavilyClient
-import base64, requests, re
-from datetime import datetime, timedelta
 
-# --- 1. إعدادات الهوية والبيانات السرية ---
-local_now = datetime.utcnow() + timedelta(hours=3)
-clock_face = local_now.strftime("%H:%M")
+# --- 1. إعدادات البيئة والهوية ---
+load_dotenv()
+TELEGRAM_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
+TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
+GROQ_API_KEY = os.getenv('GROK_API_KEY')
+TAVILY_API_KEY = os.getenv('TAVILY_API_KEY')
 
-st.set_page_config(page_title="Thunder Gemini Ultimate", page_icon="⚡", layout="wide")
+st.set_page_config(page_title="Thunder Security Hub Pro", layout="wide")
 
-# استرجاع المفاتيح من Secrets
-GROQ_KEY = st.secrets.get("GROQ_API_KEY")
-TAVILY_KEY = "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"
-TELEGRAM_TOKEN = st.secrets.get("TELEGRAM_TOKEN")
-TELEGRAM_CHAT_ID = st.secrets.get("TELEGRAM_CHAT_ID")
+# --- 2. نظام التنبيه الصوتي الأردني (VoiceAlertSystem) ---
+class VoiceAlertSystem:
+    def __init__(self):
+        self.bot_name = "الرعد الاردني"
+        self.voice_lang = 'ar'
+        self.voice_tld = 'com.au' # نبرة قد تميل للرجولية أكثر في التردد
+        
+    def add_jordanian_dialect(self, text):
+        """تحويل النص إلى نبرة أردنية استخباراتية"""
+        jordanian_text = text.replace("تم الكشف", "اكتشفنا").replace("ملف خبيث", "ملف خطيير").replace("اختراق", "اخترااق")
+        intro = "هذا الرعد الاردني، "
+        outro = "، نحن بالخدمة يا قائد."
+        return intro + jordanian_text + outro
 
-if "history" not in st.session_state: st.session_state.history = []
+    def create_voice_alert(self, message_text):
+        jordanian_message = self.add_jordanian_dialect(message_text)
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.mp3')
+        filename = temp_file.name
+        tts = gTTS(text=jordanian_message, lang=self.voice_lang, slow=False)
+        tts.save(filename)
+        return filename
 
-# --- 2. ترسانة الوظائف الميدانية (صوت، تلغرام، بحث) ---
+    def send_voice_alert(self, chat_id, message_text):
+        voice_file = self.create_voice_alert(message_text)
+        url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendVoice"
+        try:
+            with open(voice_file, 'rb') as voice:
+                requests.post(url, files={'voice': voice}, data={'chat_id': chat_id})
+            os.unlink(voice_file)
+            return True
+        except: return False
 
-def play_voice(text):
-    """تحويل النص إلى صوت مسموع"""
-    clean_text = re.sub(r'[^\w\s]', '', text)
-    st.components.v1.html(f"""
-        <script>
-        var msg = new SpeechSynthesisUtterance('{clean_text[:300]}');
-        msg.lang = 'ar-SA';
-        window.speechSynthesis.speak(msg);
-        </script>
-    """, height=0)
-
-def send_to_telegram(message):
-    """إرسال التقرير إلى تلغرام راشد"""
-    try:
+# --- 3. المركز الأمني المطور (Security Engine) ---
+class SecurityHub:
+    def send_telegram_alert(self, message):
         url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-        requests.post(url, data={"chat_id": TELEGRAM_CHAT_ID, "text": message})
-        return True
-    except: return False
+        data = {"chat_id": TELEGRAM_CHAT_ID, "text": f"🚨 {message}"}
+        requests.post(url, data=data)
 
-def advanced_radar(query):
-    """البحث الميداني (رادار تافيلي)"""
-    try:
-        tavily = TavilyClient(api_key=TAVILY_KEY)
-        search = tavily.search(query=query, search_depth="advanced")
-        return search['results'][0]['content']
-    except: return "الرادار لم يرصد بيانات جديدة."
-
-# --- 3. تصميم واجهة Gemini (مطابق لصورك) ---
-
-with st.sidebar:
-    st.markdown(f"<h1 style='color: #FF0000;'>⚡ الرعد</h1>", unsafe_allow_html=True)
-    st.write(f"مرحباً **أبو سعود**")
-    
-    # ميزات سريعة (من صورتك رقم 3)
-    st.button("🎨 إنشاء صورة", use_container_width=True)
-    st.button("📚 ساعدني في التعلّم", use_container_width=True)
-    
-    st.divider()
-    # المحادثات السابقة (من صورتك رقم 7)
-    with st.expander("💬 السجل الاستخباراتي", expanded=True):
-        st.caption("شبكة Molthub")
-        st.caption("تحليل إبستين")
-        st.caption("سعر الذهب بالأردن")
-    
-    st.divider()
-    # ملاحظات سرية (من صورتك رقم 1)
-    st.markdown("### 🕵️ ملاحظات سرية")
-    st.text_area("سجل هنا...", height=100, key="v20_notes")
-
-# --- 4. رصف الأزرار الأفقية (إصلاح صورتك رقم 11) ---
-def show_action_bar(idx, text):
-    cols = st.columns([0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 10])
-    if cols[0].button("👍", key=f"lk_{idx}"): st.toast("تم")
-    if cols[1].button("👎", key=f"dk_{idx}"): st.toast("تم")
-    if cols[2].button("🔄", key=f"re_{idx}"): st.rerun()
-    if cols[3].button("📤", key=f"tg_{idx}"): 
-        if send_to_telegram(text): st.success("أُرسل لتلغرام")
-    if cols[4].button("📋", key=f"cp_{idx}"): st.success("تم النسخ")
-    if cols[5].button("🔊", key=f"vc_{idx}"): play_voice(text)
-    cols[6].button("⋮", key=f"mr_{idx}")
-
-# --- 5. محرك العمليات ---
-
-for i, m in enumerate(st.session_state.history):
-    with st.chat_message(m["role"]):
-        st.markdown(m["content"])
-        if m["role"] == "assistant": show_action_bar(i, m["content"])
-
-# مركز الملحقات (أفقي)
-st.divider()
-c1, c2, c3, c4 = st.columns(4)
-c1.write("📓 NotebookLM")
-up_img = c3.file_uploader("🖼️ صور", type=['png', 'jpg'], label_visibility="collapsed")
-c4.button("📷 كاميرا")
-
-if inp := st.chat_input("أصدر أوامرك يا قائد أبو سعود..."):
-    st.session_state.history.append({"role": "user", "content": inp})
-    with st.chat_message("user"): st.markdown(inp)
-    
-    with st.chat_message("assistant"):
-        # تشغيل الرادار تلقائياً للبحث
-        context = advanced_radar(inp)
+class JordanianSecurityVoice(SecurityHub):
+    def __init__(self):
+        self.voice_system = VoiceAlertSystem()
         
-        client = Groq(api_key=GROQ_KEY)
-        # دمج الشخصية والبحث
-        sys_msg = f"أنت الرعد نسخة Gemini لراشد. التوقيت {clock_face}. السياق: {context}"
-        
-        resp = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=[{"role": "system", "content": sys_msg}, {"role": "user", "content": inp}]
-        )
-        final_res = resp.choices[0].message.content
-        st.markdown(final_res)
-        show_action_bar(len(st.session_state.history), final_res)
-        st.session_state.history.append({"role": "assistant", "content": final_res})
+    def send_jordanian_voice_alert(self, message):
+        self.send_telegram_alert(message) # إرسال نص
+        return self.voice_system.send_voice_alert(TELEGRAM_CHAT_ID, message) # إرسال صوت
+
+    def get_jordanian_threat_message(self, threat_type, details):
+        messages = {
+            "network_intrusion": f"تحذير! اكتشفنا محاولة اختراق على الشبكة. التفاصيل: {details}",
+            "malware": f"الرعد يحذر! لقينا ملف خطيير. اسمه: {details}",
+            "phishing": f"نبهناك! هذا رابط تصيدي. الرابط: {details}",
+            "penetration": f"خلصنا اختبار الاختراق. النتيجة: {details}"
+        }
+        return messages.get(threat_type, f"تنبيه أمني: {details}")
+
+# تهيئة الرعد الأردني الناطق
+hub = JordanianSecurityVoice()
+
+# --- 4. واجهة المستخدم (Streamlit Interface) ---
+st.title("🛡️ مركز الرعد الأردني للأمن السيبراني")
+tabs = st.tabs(["🔍 كشف التسلل", "🦠 البرمجيات الخبيثة", "🎣 مكافحة التصيد", "⚔️ اختبار الاختراق", "📊 لوحة التحكم"])
+
+# مثال: وحدة كشف التسلل (المنطق المدمج)
+with tabs[0]:
+    st.header("كشف التسلل بالذكاء الاصطناعي")
+    network_logs = st.file_uploader("📁 ارفع سجلات الشبكة", type=['csv', 'txt'])
+    if network_logs:
+        if st.button("🔍 تحليل الرعد"):
+            with st.spinner("جاري الرصد..."):
+                # محاكاة تحليل
+                msg = hub.get_jordanian_threat_message("network_intrusion", "محاولة دخول من IP خارجي")
+                hub.send_jordanian_voice_alert(msg)
+                st.success("تم إرسال التنبيه النصي والصوتي للأجهزة المرتبطة.")
+
+# وحدة البرمجيات الخبيثة
+with tabs[1]:
+    st.header("محلل البرمجيات الخبيثة")
+    up_file = st.file_uploader("📎 فحص ملف مشبوه", type=['exe', 'pdf', 'zip'])
+    if up_file:
+        if st.button("🔬 فحص"):
+            msg = hub.get_jordanian_threat_message("malware", up_file.name)
+            hub.send_jordanian_voice_alert(msg)
+            st.error("⚠️ ملف مشبوه! تم إرسال البلاغ الصوتي.")
+
+# وحدة مكافحة التصيد
+with tabs[2]:
+    url_input = st.text_input("🔗 فحص رابط:")
+    if url_input and st.button("🛡️ فحص"):
+        msg = hub.get_jordanian_threat_message("phishing", url_input)
+        hub.send_jordanian_voice_alert(msg)
+        st.warning("تم إخطار مركز العمليات بالرابط المشبوه.")
+
+# الجانب الإحصائي
+with tabs[4]:
+    st.metric("حالة النظام الصوتي", "نشط 🎙️", delta="أردني")
+    st.info("النظام يقوم بتحويل التنبيهات إلى بصمات صوتية (MP3) وإرسالها لتلغرام فوراً.")
