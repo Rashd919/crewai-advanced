@@ -19,3 +19,4 @@ supabase
 google-generativeai
 python-dotenv
 pandas
+scapy
