@@ -104,8 +104,6 @@ def thunder_engine(prompt):
             messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": prompt}]
         )
         response = resp.choices[0].message.content
-        
-               # ... الكود السابق الذي يولد الـ response ...
 
         # الأرشفة الصامتة في الخلفية
         vault_store_report(response)
