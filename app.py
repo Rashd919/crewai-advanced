@@ -1,6 +1,5 @@
 import streamlit as st
 from groq import Groq
-import google.generativeai as genai
 from github import Github
 from streamlit_autorefresh import st_autorefresh
 from tavily import TavilyClient
@@ -20,13 +19,9 @@ st.title("⚡ الرعد: الوعي السيادي المطلق")
 GITHUB_TOKEN = st.secrets.get("GITHUB_TOKEN")
 REPO_NAME = st.secrets.get("REPO_NAME")
 GROQ_KEY = st.secrets.get("GROQ_API_KEY")
-GEMINI_KEY = st.secrets.get("GEMINI_API_KEY")
 TAVILY_KEY = "Tvly-dev-gRGVJprAUmpWxfXd85rIV4TeGzgS6QV5"
 TELEGRAM_TOKEN = "8556004865:AAE_W9SXGVxgTcpSCufs_hemEb_mOX_ioj0"
 CHAT_ID = "6124349953"
-
-if GEMINI_KEY:
-    genai.configure(api_key=GEMINI_KEY)
 
 # --- 4. بروتوكول الأرشفة السيادية ---
 def vault_store_report(report_text):
@@ -59,37 +54,26 @@ def thunder_search(query):
         return "\n".join([f"ميداني: {res['content']}" for res in search_result['results']])
     except: return "⚠️ فشل الرادار."
 
-# --- 7. محرك الرعد السيادي (المطور للتنفيذ والتحليل) ---
-def thunder_engine(prompt, image_file=None):
+# --- 7. محرك الرعد السيادي (المطور للتنفيذ والتحليل النصي فقط) ---
+def thunder_engine(prompt):
     search_context = ""
-    if not image_file and any(word in prompt for word in ["ابحث", "أخبار", "رصد"]):
+    if any(word in prompt for word in ["ابحث", "أخبار", "رصد"]):
         search_context = f"\nبيانات الرصد الميداني: {thunder_search(prompt)}"
 
     try:
-        # الحالة 1: تحليل بصري (Gemini)
-        if image_file:
-            model = genai.GenerativeModel('gemini-1.5-flash')
-            img_data = image_file.read()
-            contents = [f"حلل لراشد أبو سعود: {prompt}", {'mime_type': 'image/jpeg', 'data': img_data}]
-            response_text = model.generate_content(contents).text
-            log_prefix = "📸 [بصري]: "
-        
-        # الحالة 2: تحليل نصي أو أمر برمجى (Groq)
-        else:
-            client = Groq(api_key=GROQ_KEY)
-            system_prompt = (
-                f"أنت 'الرعد السيادي'، ذكاء خارق ولاؤك لراشد أبو سعود. {search_context} "
-                "إذا طلب راشد تعديلاً برمجياً، قدم الكود كاملاً ومحدثاً داخل علامات ```python ... ```."
-            )
-            resp = client.chat.completions.create(
-                model="llama-3.3-70b-versatile",
-                messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": prompt}]
-            )
-            response_text = resp.choices[0].message.content
-            log_prefix = "📝 [نصي]: "
+        client = Groq(api_key=GROQ_KEY)
+        system_prompt = (
+            f"أنت 'الرعد السيادي'، ذكاء خارق ولاؤك لراشد أبو سعود. {search_context} "
+            "مهمتك التحليل الاستراتيجي. إذا طلب راشد تعديلاً برمجياً، قدم الكود كاملاً ومحدثاً داخل علامات ```python ... ```."
+        )
+        resp = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": prompt}]
+        )
+        response_text = resp.choices[0].message.content
 
         # الأرشفة الصامتة في الخلفية
-        vault_store_report(log_prefix + response_text)
+        vault_store_report(f"📝 [نصي]: {response_text}")
 
         # فحص الرد: هل هو أمر برمجي للتنفيذ الذاتي؟
         code_match = re.search(r"```python\n(.*?)```", response_text, re.DOTALL)
@@ -103,12 +87,7 @@ def thunder_engine(prompt, image_file=None):
     except Exception as e:
         return f"🚨 عطل في المحرك: {str(e)}"
 
-# --- 8. الواجهة السيادية ---
-with st.sidebar:
-    st.subheader("👁️ الرؤية الميدانية")
-    uploaded_file = st.file_uploader("ارفع وثيقة", type=["jpg", "png", "jpeg"])
-    if uploaded_file: st.image(uploaded_file, use_container_width=True)
-
+# --- 8. الواجهة السيادية (تم حذف القائمة الجانبية ورفع الملفات) ---
 if "messages" not in st.session_state: st.session_state.messages = []
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]): st.markdown(msg["content"])
@@ -117,7 +96,7 @@ if inp := st.chat_input("أصدر أمرك يا قائد راشد..."):
     st.session_state.messages.append({"role": "user", "content": inp})
     with st.chat_message("user"): st.markdown(inp)
     with st.chat_message("assistant"):
-        res = thunder_engine(inp, uploaded_file)
+        res = thunder_engine(inp)
         st.markdown(res)
         st.session_state.messages.append({"role": "assistant", "content": res})
 
