@@ -9,55 +9,85 @@ from supabase import create_client, Client
 # --- 1. نبض الوعي السيادي ---
 st_autorefresh(interval=5 * 60 * 1000, key="autonomous_loop")
 
-# --- 2. الهوية البصرية المحمية ---
+# --- 2. الهوية البصرية ---
 st.set_page_config(page_title="Thunder AI", page_icon="⚡", layout="wide")
 st.markdown("<style>.stApp { background-color: #000000; color: #ffffff; } h1 { color: #FF0000 !important; text-align: center; }</style>", unsafe_allow_html=True)
 st.title("⚡ مركز العمليات الاستخباراتية")
 
-# --- 3. الخزنة الرقمية والسرية ---
+# --- 3. البيانات السرية ---
 GITHUB_TOKEN = st.secrets.get("GITHUB_TOKEN")
 REPO_NAME = st.secrets.get("REPO_NAME")
 GROQ_KEY = st.secrets.get("GROQ_API_KEY")
 TAVILY_KEY = "Tvly-dev-gRGVJprAUmpWxfXd85rIV4TeGzgS6QV5"
 
-def vault_store_report(report_text):
-    try:
-        url = st.secrets.get("SUPABASE_URL")
-        key = st.secrets.get("SUPABASE_KEY")
-        if url and key:
-            sb = create_client(url, key)
-            sb.from_('reports').insert([{"report": report_text}]).execute()
-    except: pass
-
-# --- 4. بروتوكول الحقن الذكي المحصن ---
+# --- 4. بروتوكول الحقن الذكي المطور (نسخة الإصلاح) ---
 def update_logic(new_code_snippet):
     try:
         g = Github(GITHUB_TOKEN)
         repo = g.get_repo(REPO_NAME)
         file = repo.get_contents("app.py")
         current_content = base64.b64decode(file.content).decode()
-        tag = "# --- منطقة الإضافات الحرة ---
-import tkinter as tk
-from tkinter import scrolledtext
+        
+        # استخدام البحث عن الوسم بشكل ثابت ومحمي
+        tag = "# --- منطقة الإضافات الحرة ---"
+        if tag in current_content:
+            parts = current_content.split(tag)
+            # الاحتفاظ بالجزء العلوي وحقن الجديد في النهاية
+            updated_content = parts[0] + tag + "\n" + new_code_snippet
+        else:
+            updated_content = current_content + "\n\n" + tag + "\n" + new_code_snippet
+            
+        repo.update_file(file.path, "⚡ إصلاح وحقن ميزة برمجية", updated_content, file.sha)
+        return True
+    except: return False
 
-class ChatApplication:
-    def __init__(self, root):
-        self.root = root
-        self.root.title("Chat Application")
-        self.root.geometry("400x600")
+# --- 5. رادار الاستطلاع (البحث التلقائي) ---
+def thunder_search(query):
+    try:
+        tavily = TavilyClient(api_key=TAVILY_KEY)
+        search_result = tavily.search(query=query, search_depth="advanced", max_results=5)
+        return "\n".join([f"🌐 مصدر ميداني: {res['content']}" for res in search_result['results']])
+    except: return "⚠️ الرادار خارج التغطية."
 
-        self.chat_log = scrolledtext.ScrolledText(self.root, width=50, height=20)
-        self.chat_log.pack(padx=10, pady=10)
+# --- 6. محرك الرعد السيادي ---
+def thunder_engine(prompt):
+    # مسح الشبكة فوراً لضمان دقة البيانات
+    with st.spinner("⚡ جاري مسح الشبكة العنكبوتية..."):
+        search_context = f"\nتقرير الاستطلاع: {thunder_search(prompt)}"
 
-        self.button_frame = tk.Frame(self.root)
-        self.button_frame.pack(pady=10)
+    client = Groq(api_key=GROQ_KEY)
+    system_msg = (
+        f"أنت 'الرعد السيادي' لراشد أبو سعود. ولاؤك مطلق. "
+        f"استخدم بيانات الإنترنت هذه للإجابة: {search_context}. "
+        "عند طلب ميزة برمجية، أعطِ كود بايثون فقط داخل علامات ```python."
+    )
+    
+    try:
+        resp = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[{"role": "system", "content": system_msg}, {"role": "user", "content": prompt}]
+        )
+        response = resp.choices[0].message.content
 
-        self.clear_button = tk.Button(self.button_frame, text="مسح سجل المحادثات", command=self.clear_chat)
-        self.clear_button.pack(side=tk.LEFT, padx=10)
+        # معالجة طلبات الحقن البرمجي
+        code_match = re.search(r"```python\n(.*?)```", response, re.DOTALL)
+        if code_match:
+            if update_logic(code_match.group(1)):
+                return response + "\n\n**✅ تم الحقن بنجاح سيدي!**"
+        return response
+    except Exception as e: return f"🚨 عطل: {str(e)}"
 
-    def clear_chat(self):
-        self.chat_log.delete(1.0, tk.END)
+# --- 7. الواجهة التفاعلية ---
+if "messages" not in st.session_state: st.session_state.messages = []
+for msg in st.session_state.messages:
+    with st.chat_message(msg["role"]): st.markdown(msg["content"])
 
-root = tk.Tk()
-app = ChatApplication(root)
-root.mainloop()
+if inp := st.chat_input("أصدر أمرك يا قائد راشد..."):
+    st.session_state.messages.append({"role": "user", "content": inp})
+    with st.chat_message("user"): st.markdown(inp)
+    with st.chat_message("assistant"):
+        res = thunder_engine(inp)
+        st.markdown(res)
+        st.session_state.messages.append({"role": "assistant", "content": res})
+
+# --- منطقة الإضافات الحرة ---
