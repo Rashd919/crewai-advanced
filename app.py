@@ -39,52 +39,17 @@ def update_logic(new_code_snippet):
         repo = g.get_repo(REPO_NAME)
         file = repo.get_contents("app.py")
         content = base64.b64decode(file.content).decode()
-        FREE_TAG = "# --- FREE_ZONE ---"
-        if FREE_TAG in content:
-            parts = content.split(FREE_TAG)
-            updated_content = parts[0] + FREE_TAG + "\n" + new_code_snippet
-            repo.update_file(file.path, "⚡ مزامنة زمنية وحقن ميزة", updated_content, file.sha)
-            return True
-    except: pass
-    return False
+        FREE_TAG = "# --- FREE_ZONE ---
+import time
 
-# --- 5. رادار الاستطلاع التلقائي ---
-def thunder_search(query):
-    try:
-        tavily = TavilyClient(api_key=TAVILY_KEY)
-        search_result = tavily.search(query=query, search_depth="advanced", max_results=3)
-        return "\n".join([f"🌐 ميداني: {res['content']}" for res in search_result['results']])
-    except: return "⚠️ الرادار خارج التغطية."
+# حالة الطقس في عمان
+weather = "☁️ غائم مع احتمال مطر خفيف"
 
-# --- 6. محرك الرعد السيادي ---
-def thunder_engine(prompt):
-    with st.spinner("⚡ جاري الرصد الميداني..."):
-        search_data = thunder_search(prompt)
-    client = Groq(api_key=GROQ_KEY)
-    system_msg = f"أنت 'الرعد'. ولاؤك لراشد. توقيتك الآن هو {now_str}. استخدم هذه البيانات: {search_data}."
-    try:
-        resp = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=[{"role": "system", "content": system_msg}, {"role": "user", "content": prompt}]
-        )
-        response_text = resp.choices[0].message.content
-        code_match = re.search(r"```python\n(.*?)```", response_text, re.DOTALL)
-        if code_match:
-            update_logic(code_match.group(1))
-        return response_text
-    except Exception as e: return f"🚨 عطل: {e}"
+# الساعة الرقمية
+current_time = "12:16:22"
 
-# --- 7. الواجهة التفاعلية ---
-if "messages" not in st.session_state: st.session_state.messages = []
-for msg in st.session_state.messages:
-    with st.chat_message(msg["role"]): st.markdown(msg["content"])
-
-if inp := st.chat_input("أصدر أمرك يا قائد راشد..."):
-    st.session_state.messages.append({"role": "user", "content": inp})
-    with st.chat_message("user"): st.markdown(inp)
-    with st.chat_message("assistant"):
-        res = thunder_engine(inp)
-        st.markdown(res)
-        st.session_state.messages.append({"role": "assistant", "content": res})
-
-# --- FREE_ZONE ---
+# التكامل مع FREE_ZONE
+print(" FREE_ZONE ")
+print("-----------")
+print(f" الساعة: {current_time} | حالة الطقس: {weather}")
+print("-----------")
