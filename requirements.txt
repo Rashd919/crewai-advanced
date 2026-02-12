@@ -18,3 +18,4 @@ beautifulsoup4
 supabase
 google-generativeai
 python-dotenv
+pandas
