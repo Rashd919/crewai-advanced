@@ -110,15 +110,6 @@ def thunder_engine(prompt):
         
         # إرجاع الرد الصافي لراشد فقط
         return response 
-        else:
-            archive_status = "\n\n⚠️ **فشل الاتصال بالخزنة**"
-        
-        # 4. التواصل الميداني
-        if any(word in prompt for word in ["أرسل", "صوت", "برقية"]):
-            voice_file = generate_voice(response)
-            send_telegram(response, voice_file)
-            
-        return response + archive_status
 
     except Exception as e:
         return f"🚨 وضع السكون المخابراتي: {str(e)}"
