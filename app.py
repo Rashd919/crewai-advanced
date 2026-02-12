@@ -29,65 +29,45 @@ def update_logic(new_code_snippet):
         content = base64.b64decode(file.content).decode()
         
         # استخدام معرف فريد جداً لا يحتوي على علامات تنصيص معقدة
-        MARKER = "# --- FREE_ZONE ---"
-        
-        if MARKER in content:
-            parts = content.split(MARKER)
-            # إضافة الكود الجديد مع الحفاظ على الهيكل
-            updated_content = parts[0] + MARKER + "\n" + new_code_snippet
-            repo.update_file(file.path, "⚡ إضافة ميزة سيادية", updated_content, file.sha)
-            return True
-    except: pass
-    return False
+        MARKER = "# --- FREE_ZONE ---
+import streamlit as st
+import yfinance as yf
+import time
 
-# --- 5. رادار الاستطلاع (Tavily) ---
-def thunder_search(query):
-    try:
-        tavily = TavilyClient(api_key=TAVILY_KEY)
-        search_result = tavily.search(query=query, search_depth="advanced", max_results=3)
-        return "\n".join([f"🌐 ميداني: {res['content']}" for res in search_result['results']])
-    except: return "⚠️ الرادار معطل."
+# دالة لتغيير التوقيت إلى التوقيت المحلي
+def get_local_time():
+    return time.strftime("%H:%M:%S")
 
-# --- 6. محرك الرعد السيادي (المحدث) ---
-def thunder_engine(prompt):
-    # رصد آلي فوري قبل الإجابة
-    with st.spinner("⚡ جاري الرصد الميداني..."):
-        search_data = thunder_search(prompt)
-    
-    client = Groq(api_key=GROQ_KEY)
-    system_msg = (
-        f"أنت 'الرعد'. ولاؤك لراشد. استخدم هذه البيانات: {search_data}. "
-        "ممنوع استخدام مكتبة tkinter. استخدم streamlit فقط. "
-        "عند طلب كود، أعطه داخل ```python فقط للإضافة للمنطقة الحرة."
-    )
-    
-    try:
-        resp = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=[{"role": "system", "content": system_msg}, {"role": "user", "content": prompt}]
-        )
-        response_text = resp.choices[0].message.content
+# دالة لجلب بيانات سوق الأسهم العالمية
+def get_stock_data():
+    stocks = ["AAPL", "GOOG", "MSFT", "AMZN", "FB"]
+    stock_data = {}
+    for stock in stocks:
+        data = yf.Ticker(stock)
+        info = data.info
+        stock_data[stock] = {
+            "price": info["currentPrice"],
+            "sector": info["sector"],
+            "industry": info["industry"],
+        }
+    return stock_data
 
-        # معالجة الحقن
-        code_match = re.search(r"```python\n(.*?)```", response_text, re.DOTALL)
-        if code_match:
-            update_logic(code_match.group(1))
-            return response_text + "\n\n**✅ تم الدمج بنجاح يا قائد!**"
-        
-        return response_text
-    except Exception as e: return f"🚨 عطل: {e}"
+# إنشاء ساعة رقمية
+st.title("سوق الأسهم العالمية")
+col1, col2 = st.columns([1, 5])
+with col1:
+    st.write("الساعة: ")
+    place = st.empty()
+    while True:
+        place.write(get_local_time())
+        time.sleep(1)
 
-# --- 7. الواجهة ---
-if "messages" not in st.session_state: st.session_state.messages = []
-for msg in st.session_state.messages:
-    with st.chat_message(msg["role"]): st.markdown(msg["content"])
-
-if inp := st.chat_input("أصدر أمرك يا قائد راشد..."):
-    st.session_state.messages.append({"role": "user", "content": inp})
-    with st.chat_message("user"): st.markdown(inp)
-    with st.chat_message("assistant"):
-        res = thunder_engine(inp)
-        st.markdown(res)
-        st.session_state.messages.append({"role": "assistant", "content": res})
-
-# --- FREE_ZONE ---
+# عرض بيانات سوق الأسهم العالمية
+st.write("بيانات سوق الأسهم العالمية:")
+stock_data = get_stock_data()
+for stock, data in stock_data.items():
+    st.write(f"سهم {stock}:")
+    st.write(f"السعر: {data['price']}")
+    st.write(f"القسيمة: {data['sector']}")
+    st.write(f"الصناعة: {data['industry']}")
+    st.write("---")
