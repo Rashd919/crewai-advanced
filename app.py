@@ -20,7 +20,7 @@ REPO_NAME = st.secrets.get("REPO_NAME")
 GROQ_KEY = st.secrets.get("GROQ_API_KEY")
 TAVILY_KEY = "Tvly-dev-gRGVJprAUmpWxfXd85rIV4TeGzgS6QV5"
 
-# --- 4. بروتوكول الحقن الذكي المطور (نسخة الإصلاح) ---
+# --- 4. بروتوكول الحقن "المقفل" (لا يمكن للرعد تعديله) ---
 def update_logic(new_code_snippet):
     try:
         g = Github(GITHUB_TOKEN)
@@ -28,16 +28,65 @@ def update_logic(new_code_snippet):
         file = repo.get_contents("app.py")
         current_content = base64.b64decode(file.content).decode()
         
-        # استخدام البحث عن الوسم بشكل ثابت ومحمي
-        tag = "# --- منطقة الإضافات الحرة ---
-import requests
+        # الوسم بشكل نصي مباشر لضمان عدم كسر السلسلة النصية
+        target_tag = "# --- منطقة الإضافات الحرة ---"
+        
+        if target_tag in current_content:
+            parts = current_content.split(target_tag)
+            # دائماً نضع الجديد في النهاية بعد الوسم
+            updated_content = parts[0] + target_tag + "\n" + new_code_snippet
+            repo.update_file(file.path, "⚡ حقن ميزة جديدة", updated_content, file.sha)
+            return True
+    except Exception as e:
+        st.error(f"خطأ في الحقن: {e}")
+    return False
 
-# مثال على كيفية الحصول على سعر الذهب من مصدر معين
-url = "https://api.example.com/gold_price"
-response = requests.get(url)
+# --- 5. رادار الاستطلاع (Tavily) ---
+def thunder_search(query):
+    try:
+        tavily = TavilyClient(api_key=TAVILY_KEY)
+        search_result = tavily.search(query=query, search_depth="advanced", max_results=3)
+        return "\n".join([f"🌐 ميداني: {res['content']}" for res in search_result['results']])
+    except: return "⚠️ الرادار معطل."
 
-if response.status_code == 200:
-    data = response.json()
-    print("سعر الذهب الحالي: ", data["price"])
-else:
-    print("لم يتم الحصول على سعر الذهب بنجاح.")
+# --- 6. محرك الرعد السيادي ---
+def thunder_engine(prompt):
+    # رصد آلي فوري
+    search_data = thunder_search(prompt)
+    
+    client = Groq(api_key=GROQ_KEY)
+    system_msg = (
+        f"أنت 'الرعد'. ولاؤك لراشد. استخدم هذه البيانات للرد: {search_data}. "
+        "ممنوع تعديل الدوال الأساسية. إذا طلب راشد كود، أعطه داخل ```python فقط."
+    )
+    
+    try:
+        resp = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[{"role": "system", "content": system_msg}, {"role": "user", "content": prompt}]
+        )
+        response_text = resp.choices[0].message.content
+
+        # فحص وجود كود للحقن
+        code_match = re.search(r"```python\n(.*?)```", response_text, re.DOTALL)
+        if code_match:
+            if update_logic(code_match.group(1)):
+                st.success("⚡ تم دمج الميزة بنجاح!")
+        
+        return response_text
+    except Exception as e: return f"🚨 عطل: {e}"
+
+# --- 7. الواجهة ---
+if "messages" not in st.session_state: st.session_state.messages = []
+for msg in st.session_state.messages:
+    with st.chat_message(msg["role"]): st.markdown(msg["content"])
+
+if inp := st.chat_input("أصدر أمرك يا قائد راشد..."):
+    st.session_state.messages.append({"role": "user", "content": inp})
+    with st.chat_message("user"): st.markdown(inp)
+    with st.chat_message("assistant"):
+        res = thunder_engine(inp)
+        st.markdown(res)
+        st.session_state.messages.append({"role": "assistant", "content": res})
+
+# --- منطقة الإضافات الحرة ---
