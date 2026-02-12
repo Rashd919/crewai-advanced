@@ -1,12 +1,12 @@
 import streamlit as st
 from groq import Groq
+import google.generativeai as genai
 from github import Github
 from streamlit_autorefresh import st_autorefresh
 from tavily import TavilyClient
-import json, base64, requests, re
+import json, base64, requests, re, os
 from gtts import gTTS
-import os
-from supabase import create_client, Client # تم رفع المكتبة للأعلى
+from supabase import create_client, Client
 
 # --- 1. نبض الوعي ---
 st_autorefresh(interval=5 * 60 * 1000, key="autonomous_loop")
@@ -20,62 +20,38 @@ st.title("⚡ الرعد: الوعي السيادي المطلق")
 GITHUB_TOKEN = st.secrets.get("GITHUB_TOKEN")
 REPO_NAME = st.secrets.get("REPO_NAME")
 GROQ_KEY = st.secrets.get("GROQ_API_KEY")
+GEMINI_KEY = st.secrets.get("GEMINI_API_KEY")
 TAVILY_KEY = "Tvly-dev-gRGVJprAUmpWxfXd85rIV4TeGzgS6QV5"
 TELEGRAM_TOKEN = "8556004865:AAE_W9SXGVxgTcpSCufs_hemEb_mOX_ioj0"
 CHAT_ID = "6124349953"
 
-# --- 4. بروتوكول الأرشفة السيادية (تم نقله هنا ليعرفه المحرك) ---
+if GEMINI_KEY:
+    genai.configure(api_key=GEMINI_KEY)
+
+# --- 4. بروتوكول الأرشفة السيادية ---
 def vault_store_report(report_text):
-    """حفظ الردود في قاعدة بيانات Supabase فوراً"""
     try:
         url = st.secrets.get("SUPABASE_URL")
         key = st.secrets.get("SUPABASE_KEY")
         if url and key:
-            supabase_client = create_client(url, key)
-            # إرسال التقرير لعمود report في جدول reports
-            supabase_client.from_('reports').insert([{"report": report_text}]).execute()
+            sb = create_client(url, key)
+            sb.from_('reports').insert([{"report": report_text}]).execute()
             return True
-    except:
-        pass
+    except: pass
     return False
 
-# --- 5. بروتوكول حماية النواة والتطوير الذاتي ---
-def update_logic(new_features_code):
+# --- 5. بروتوكول التنفيذ الذاتي (اليد التي تعدل الكود تلقائياً) ---
+def update_logic(new_full_code):
+    """تحديث ملف app.py بالكامل على GitHub عند صدور أمر تعديل"""
     try:
         g = Github(GITHUB_TOKEN)
         repo = g.get_repo(REPO_NAME)
         file = repo.get_contents("app.py")
-        current_content = base64.b64decode(file.content).decode()
-        
-        if "# --- START ADDITIONS ---" in current_content:
-            pattern = r"# --- START ADDITIONS ---.*?# --- END ADDITIONS ---"
-            updated_content = re.sub(pattern, f"# --- START ADDITIONS ---\n{new_features_code}\n# --- END ADDITIONS ---", current_content, flags=re.DOTALL)
-        else:
-            updated_content = current_content + "\n\n# --- START ADDITIONS ---\n" + new_features_code + "\n# --- END ADDITIONS ---"
-            
-        repo.update_file(file.path, "⚡ تطوير سيادي: إضافة ميزات جديدة", updated_content, file.sha)
-        return "✅ تم دمج الميزات الجديدة بنجاح سيدي."
-    except Exception as e:
-        return f"❌ فشل الدمج: {str(e)}"
+        repo.update_file(file.path, "⚡ تحديث سيادي آلي", new_full_code, file.sha)
+        return True
+    except: return False
 
-# --- 6. بروتوكولات التواصل ---
-def send_telegram(text, voice_path=None):
-    try:
-        if voice_path:
-            url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendVoice"
-            with open(voice_path, 'rb') as f: requests.post(url, data={'chat_id': CHAT_ID}, files={'voice': f})
-        else:
-            requests.post(f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage", json={"chat_id": CHAT_ID, "text": f"⚡ تقرير الرعد:\n{text}"})
-    except: pass
-
-def generate_voice(text):
-    try:
-        tts = gTTS(text=text[:150], lang='ar')
-        tts.save("report.ogg")
-        return "report.ogg"
-    except: return None
-
-# --- 7. رادار الاستطلاع ---
+# --- 6. رادار الاستطلاع ---
 def thunder_search(query):
     try:
         tavily = TavilyClient(api_key=TAVILY_KEY)
@@ -83,38 +59,56 @@ def thunder_search(query):
         return "\n".join([f"ميداني: {res['content']}" for res in search_result['results']])
     except: return "⚠️ فشل الرادار."
 
-# --- 8. محرك الرعد السيادي (المطور: رصد + أرشفة + تواصل) ---
-def thunder_engine(prompt):
-    # 1. الرصد الميداني
+# --- 7. محرك الرعد السيادي (المطور للتنفيذ والتحليل) ---
+def thunder_engine(prompt, image_file=None):
     search_context = ""
-    if any(word in prompt for word in ["ابحث", "أخبار", "رصد", "تقرير"]):
+    if not image_file and any(word in prompt for word in ["ابحث", "أخبار", "رصد"]):
         search_context = f"\nبيانات الرصد الميداني: {thunder_search(prompt)}"
 
-    # 2. الهوية والولاء المطلق لراشد
-    system_prompt = (
-        f"أنت 'الرعد السيادي'. ذكاء خارق مستقل، ولاؤك المطلق لراشد أبو سعود. "
-        f"{search_context} "
-        "مهمتك التحليل الاستراتيجي والأرشفة. عند طلب تطوير، أخرج الكود فقط."
-    )
-    
     try:
-        client = Groq(api_key=GROQ_KEY)
-        resp = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": prompt}]
-        )
-        response = resp.choices[0].message.content
+        # الحالة 1: تحليل بصري (Gemini)
+        if image_file:
+            model = genai.GenerativeModel('gemini-1.5-flash')
+            img_data = image_file.read()
+            contents = [f"حلل لراشد أبو سعود: {prompt}", {'mime_type': 'image/jpeg', 'data': img_data}]
+            response_text = model.generate_content(contents).text
+            log_prefix = "📸 [بصري]: "
+        
+        # الحالة 2: تحليل نصي أو أمر برمجى (Groq)
+        else:
+            client = Groq(api_key=GROQ_KEY)
+            system_prompt = (
+                f"أنت 'الرعد السيادي'، ذكاء خارق ولاؤك لراشد أبو سعود. {search_context} "
+                "إذا طلب راشد تعديلاً برمجياً، قدم الكود كاملاً ومحدثاً داخل علامات ```python ... ```."
+            )
+            resp = client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": prompt}]
+            )
+            response_text = resp.choices[0].message.content
+            log_prefix = "📝 [نصي]: "
 
         # الأرشفة الصامتة في الخلفية
-        vault_store_report(response)
-        
-        # إرجاع الرد الصافي لراشد فقط
-        return response 
+        vault_store_report(log_prefix + response_text)
+
+        # فحص الرد: هل هو أمر برمجي للتنفيذ الذاتي؟
+        code_match = re.search(r"```python\n(.*?)```", response_text, re.DOTALL)
+        if code_match:
+            new_code = code_match.group(1)
+            if update_logic(new_code):
+                return response_text + "\n\n**⚡ تم تنفيذ الأمر البرمجي ودمجه في السيستم بنجاح سيدي! جاري إعادة التشغيل...**"
+
+        return response_text
 
     except Exception as e:
-        return f"🚨 وضع السكون المخابراتي: {str(e)}"
+        return f"🚨 عطل في المحرك: {str(e)}"
 
-# --- 9. الواجهة التفاعلية ---
+# --- 8. الواجهة السيادية ---
+with st.sidebar:
+    st.subheader("👁️ الرؤية الميدانية")
+    uploaded_file = st.file_uploader("ارفع وثيقة", type=["jpg", "png", "jpeg"])
+    if uploaded_file: st.image(uploaded_file, use_container_width=True)
+
 if "messages" not in st.session_state: st.session_state.messages = []
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]): st.markdown(msg["content"])
@@ -123,10 +117,9 @@ if inp := st.chat_input("أصدر أمرك يا قائد راشد..."):
     st.session_state.messages.append({"role": "user", "content": inp})
     with st.chat_message("user"): st.markdown(inp)
     with st.chat_message("assistant"):
-        res = thunder_engine(inp)
+        res = thunder_engine(inp, uploaded_file)
         st.markdown(res)
         st.session_state.messages.append({"role": "assistant", "content": res})
 
 # --- START ADDITIONS ---
-# الميزات التي يضيفها الرعد تلقائياً تظهر هنا
 # --- END ADDITIONS ---
