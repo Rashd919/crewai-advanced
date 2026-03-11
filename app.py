@@ -185,14 +185,14 @@ class PDFReportGenerator:
             self.pdf.cell(0, 10, f"--- {section_title} ---", ln=True, align='R')
             self.pdf.ln(5)
             self.pdf.set_font('Arabic', '', 12)
-            if isinstance(section_content, list):
-                if isinstance(section_content, list):
-    content_text = "\n".join(map(str, section_content))
-            else:
-                content_text = str(section_content)
-            self.pdf.multi_cell(0, 10, content_text, align='R')
-            self.pdf.ln(5)
-        
+        if isinstance(section_content, list):
+            content_text = "\n".join(map(str, section_content))
+        elif isinstance(section_content, dict):
+            content_text = json.dumps(section_content, indent=2, ensure_ascii=False)
+        else:
+            content_text = str(section_content)
+self.pdf.multi_cell(0, 10, content_text, align='R')
+self.pdf.ln(5)        
         self.pdf.output(filename)
         return filename
 
