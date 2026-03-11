@@ -170,19 +170,31 @@ class PDFReportGenerator:
         self.pdf.multi_cell(0, 10, content, align='R')
         self.pdf.ln(5)
 
-        def generate_report(self, filename="report.pdf", report_data={}):
+    def generate_report(self, filename="report.pdf", report_data={}):
         self.pdf.add_page()
         self.pdf.set_font('Arabic', '', 16)
         self.pdf.cell(0, 10, "تقرير مركز الرعد الهجومي", ln=True, align='C')
+        self.pdf.ln(5)
         self.pdf.set_font('Arabic', '', 12)
-        self.pdf.cell(0, 10, f"تاريخ التقرير: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", ln=True, align='R')
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        self.pdf.cell(0, 10, f"تاريخ التقرير: {current_time}", ln=True, align='R')
         self.pdf.ln(10)
 
         for section_title, section_content in report_data.items():
             self.pdf.set_font('Arabic', '', 14)
-            self.pdf.cell(0, 10, section_title, ln=True, align='R')
+            self.pdf.cell(0, 10, f"--- {section_title} ---", ln=True, align='R')
+            self.pdf.ln(5)
             self.pdf.set_font('Arabic', '', 12)
-            self.pdf.add_section(section_title, content_str)
+            if isinstance(section_content, list):
+                content_text = "\n".join(section_content)
+            else:
+                content_text = str(section_content)
+            self.pdf.multi_cell(0, 10, content_text, align='R')
+            self.pdf.ln(5)
+        
+        self.pdf.output(filename)
+        return filename
+
 
         self.pdf.output(filename)
         return filename
