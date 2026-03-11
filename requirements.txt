@@ -21,3 +21,5 @@ python-dotenv
 pandas
 openpyxl
 Scapy
+arabic-reshaper
+python-bidi
