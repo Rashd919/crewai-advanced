@@ -186,7 +186,8 @@ class PDFReportGenerator:
             self.pdf.ln(5)
             self.pdf.set_font('Arabic', '', 12)
             if isinstance(section_content, list):
-                content_text = "\n".join(section_content)
+                if isinstance(section_content, list):
+    content_text = "\n".join(map(str, section_content))
             else:
                 content_text = str(section_content)
             self.pdf.multi_cell(0, 10, content_text, align='R')
