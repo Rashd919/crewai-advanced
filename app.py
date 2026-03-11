@@ -193,7 +193,7 @@ class VoiceAlertSystem:
     def create_voice_alert(self, text):
         jordanian_text = f"يا قائد أبو سعود، {text}، نحن بالخدمة."
         temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
-        tts = gTTS(text=jordanian_text, lang=\'ar\', slow=False)
+        tts = gTTS(text=jordanian_text, lang='ar', slow=False)
         tts.save(temp_file.name)
         return temp_file.name
 
