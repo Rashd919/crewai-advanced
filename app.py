@@ -160,7 +160,7 @@ class PDFReportGenerator:
         self.pdf.add_page()
         self.pdf.set_font("Arial", size=12)
         # إضافة دعم للغة العربية
-        self.pdf.add_font('Arabic', '', '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', uni=True)
+        self.pdf.add_font('Arabic', '', 'DejaVuSans.ttf', uni=True)
         self.pdf.set_font('Arabic', size=12)
 
     def add_section(self, title, content):
