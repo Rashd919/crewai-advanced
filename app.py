@@ -171,31 +171,56 @@ class PDFReportGenerator:
         self.pdf.ln(5)
 
     def generate_report(self, filename="report.pdf", report_data={}):
-        self.pdf.add_page()
-        self.pdf.set_font('Arabic', '', 16)
-        self.pdf.cell(0, 10, "تقرير مركز الرعد الهجومي", ln=True, align='C')
-        self.pdf.ln(5)
-        self.pdf.set_font('Arabic', '', 12)
+        from fpdf import FPDF
+        from datetime import datetime
+        import json
+
+        # إنشاء كائن جديد تماماً لتجنب خطأ "Closed Document"
+        new_pdf = FPDF()
+        
+        # إعداد الخط (تأكد من وجود ملف DejaVuSans.ttf في مشروعك)
+        try:
+            new_pdf.add_font('Arabic', '', 'DejaVuSans.ttf', uni=True)
+            new_pdf.set_font('Arabic', '', 12)
+        except:
+            # حل احتياطي إذا لم يجد الخط العربي
+            new_pdf.add_font('Arial', '', '') 
+            new_pdf.set_font('Arial', '', 12)
+
+        new_pdf.add_page()
+        
+        # العنوان الرئيسي
+        new_pdf.set_font('Arabic', '', 16)
+        new_pdf.cell(0, 10, "تقرير مركز الرعد الهجومي", ln=True, align='C')
+        new_pdf.ln(5)
+        
+        # التاريخ
+        new_pdf.set_font('Arabic', '', 10)
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        self.pdf.cell(0, 10, f"تاريخ التقرير: {current_time}", ln=True, align='R')
-        self.pdf.ln(10)
+        new_pdf.cell(0, 10, f"تاريخ التقرير: {current_time}", ln=True, align='R')
+        new_pdf.ln(10)
 
+        # كتابة البيانات
         for section_title, section_content in report_data.items():
-            self.pdf.set_font('Arabic', '', 14)
-            self.pdf.cell(0, 10, f"--- {section_title} ---", ln=True, align='R')
-            self.pdf.ln(5)
-            self.pdf.set_font('Arabic', '', 12)
-        if isinstance(section_content, list):
-            content_text = "\n".join(map(str, section_content))
-        elif isinstance(section_content, dict):
-            content_text = json.dumps(section_content, indent=2, ensure_ascii=False)
-        else:
-            content_text = str(section_content)
-
-        self.pdf.multi_cell(0, 10, content_text, align='R')
-        self.pdf.ln(5)
-
-        self.pdf.output(filename)
+            new_pdf.set_font('Arabic', '', 14)
+            new_pdf.cell(0, 10, f"--- {section_title} ---", ln=True, align='R')
+            new_pdf.ln(2)
+            
+            new_pdf.set_font('Arabic', '', 11)
+            
+            # تحويل المحتوى لنص (سواء كان قائمة، قاموس، أو نص بسيط)
+            if isinstance(section_content, list):
+                content_text = "\n".join(map(str, section_content))
+            elif isinstance(section_content, dict):
+                content_text = json.dumps(section_content, indent=2, ensure_ascii=False)
+            else:
+                content_text = str(section_content)
+                
+            new_pdf.multi_cell(0, 8, content_text, align='R')
+            new_pdf.ln(5)
+        
+        # حفظ وإخراج الملف
+        new_pdf.output(filename)
         return filename
 
 # --- 3. نظام التنبيه الصوتي الأردني المطور ---
