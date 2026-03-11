@@ -10,7 +10,7 @@ from gtts import gTTS
 from scapy.all import IP, TCP, send, sr1
 from groq import Groq
 from bs4 import BeautifulSoup
-from fpdf2 import FPDF
+from fpdf import FPDF
 import time
 
 # --- 1. إعدادات الهوية والترسانة ---
