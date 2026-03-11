@@ -173,53 +173,49 @@ class PDFReportGenerator:
     def generate_report(self, filename="report.pdf", report_data={}):
         from fpdf import FPDF
         from datetime import datetime
+        import arabic_reshaper
+        from bidi.algorithm import get_display
         import json
 
-        # إنشاء كائن جديد تماماً لتجنب خطأ "Closed Document"
-        new_pdf = FPDF()
-        
-        # إعداد الخط (تأكد من وجود ملف DejaVuSans.ttf في مشروعك)
-        try:
-            new_pdf.add_font('Arabic', '', 'DejaVuSans.ttf', uni=True)
-            new_pdf.set_font('Arabic', '', 12)
-        except:
-            # حل احتياطي إذا لم يجد الخط العربي
-            new_pdf.add_font('Arial', '', '') 
-            new_pdf.set_font('Arial', '', 12)
+        # دالة لإصلاح النصوص العربية (عشان ما تطلع الحروف مقطعة)
+        def fix_arabic(text):
+            if not text: return ""
+            reshaped_text = arabic_reshaper.reshape(str(text))
+            return get_display(reshaped_text)
 
+        new_pdf = FPDF()
+        # تأكد أن ملف DejaVuSans.ttf موجود في نفس المجلد
+        new_pdf.add_font('Arabic', '', 'DejaVuSans.ttf', uni=True)
         new_pdf.add_page()
         
         # العنوان الرئيسي
-        new_pdf.set_font('Arabic', '', 16)
-        new_pdf.cell(0, 10, "تقرير مركز الرعد الهجومي", ln=True, align='C')
-        new_pdf.ln(5)
-        
-        # التاريخ
-        new_pdf.set_font('Arabic', '', 10)
-        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        new_pdf.cell(0, 10, f"تاريخ التقرير: {current_time}", ln=True, align='R')
+        new_pdf.set_font('Arabic', '', 18)
+        new_pdf.cell(0, 10, fix_arabic("تقرير مركز الرعد الهجومي"), ln=True, align='C')
         new_pdf.ln(10)
-
-        # كتابة البيانات
+        
         for section_title, section_content in report_data.items():
+            # العناوين الجانبية (مثل: الهدف، نوع العملية)
             new_pdf.set_font('Arabic', '', 14)
-            new_pdf.cell(0, 10, f"--- {section_title} ---", ln=True, align='R')
+            new_pdf.cell(0, 10, fix_arabic(f"--- {section_title} ---"), ln=True, align='R')
             new_pdf.ln(2)
             
             new_pdf.set_font('Arabic', '', 11)
             
-            # تحويل المحتوى لنص (سواء كان قائمة، قاموس، أو نص بسيط)
+            # تنظيف المحتوى من رسائل خطأ السيرفر المتكررة
             if isinstance(section_content, list):
-                content_text = "\n".join(map(str, section_content))
-            elif isinstance(section_content, dict):
-                content_text = json.dumps(section_content, indent=2, ensure_ascii=False)
+                # إذا كانت القائمة كلها أخطاء "Operation not permitted"، نختصرها
+                clean_list = [line for line in section_content if "not permitted" not in str(line)]
+                if not clean_list and any("not permitted" in str(l) for l in section_content):
+                    content_text = "تنبيه: العملية تتطلب صلاحيات Root (شغل البرنامج محلياً لرؤية النتائج كاملة)."
+                else:
+                    content_text = "\n".join(map(str, clean_list))
             else:
                 content_text = str(section_content)
                 
-            new_pdf.multi_cell(0, 8, content_text, align='R')
+            # كتابة النص المعالج
+            new_pdf.multi_cell(0, 8, fix_arabic(content_text), align='R')
             new_pdf.ln(5)
         
-        # حفظ وإخراج الملف
         new_pdf.output(filename)
         return filename
 
