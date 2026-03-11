@@ -20,4 +20,4 @@ google-generativeai
 python-dotenv
 pandas
 openpyxl
-socket
+Scapy
