@@ -316,7 +316,8 @@ with tabs[3]: # Reports Tab
             st.warning("لا توجد بيانات لتوليد التقرير. يرجى تنفيذ بعض العمليات أولاً.")
         else:
             with st.spinner("جاري توليد تقرير PDF..."):
-                # يجب أن تكون report_data متاحة هنا، يمكن حفظها في session_stat                final_report_data = st.session_state.report_data
+                final_report_data = st.session_state.report_data
+                pdf_file = report_generator.generate_report(f"{report_filename}.pdf", final_report_data)
                 pdf_file = report_generator.generate_report(f"{report_filename}.pdf", final_report_data)
                 with open(pdf_file, "rb") as f:
                     st.download_button(
