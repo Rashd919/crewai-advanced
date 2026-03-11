@@ -195,10 +195,6 @@ class PDFReportGenerator:
         self.pdf.multi_cell(0, 10, content_text, align='R')
         self.pdf.ln(5)
 
-    self.pdf.output(filename)
-    return filename
-
-
         self.pdf.output(filename)
         return filename
 
