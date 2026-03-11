@@ -191,12 +191,12 @@ class PDFReportGenerator:
             content_text = json.dumps(section_content, indent=2, ensure_ascii=False)
         else:
             content_text = str(section_content)
-            
-self.pdf.multi_cell(0, 10, content_text, align='R')
-self.pdf.ln(5) 
 
-        self.pdf.output(filename)
-        return filename
+        self.pdf.multi_cell(0, 10, content_text, align='R')
+        self.pdf.ln(5)
+
+    self.pdf.output(filename)
+    return filename
 
 
         self.pdf.output(filename)
