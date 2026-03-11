@@ -171,7 +171,9 @@ class PDFReportGenerator:
         self.pdf.ln(5)
 
     def generate_report(self, filename="report.pdf", report_data={}):
-        self.pdf.add_section("تقرير مركز الرعد الهجومي", "")
+        self.pdf.add_page()
+self.pdf.set_font('Arabic', '', 16)
+self.pdf.cell(0, 10, "تقرير مركز الرعد الهجومي", ln=True, align='C')
         self.pdf.add_section("تاريخ التقرير:", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
         
         for section_title, section_content in report_data.items():
