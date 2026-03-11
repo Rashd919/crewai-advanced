@@ -177,33 +177,43 @@ class PDFReportGenerator:
         from bidi.algorithm import get_display
         import json
 
-        # دالة لإصلاح النصوص العربية (عشان ما تطلع الحروف مقطعة)
         def fix_arabic(text):
             if not text: return ""
             reshaped_text = arabic_reshaper.reshape(str(text))
             return get_display(reshaped_text)
 
         new_pdf = FPDF()
-        # تأكد أن ملف DejaVuSans.ttf موجود في نفس المجلد
         new_pdf.add_font('Arabic', '', 'DejaVuSans.ttf', uni=True)
         new_pdf.add_page()
         
-        # العنوان الرئيسي
-        new_pdf.set_font('Arabic', '', 18)
-        new_pdf.cell(0, 10, fix_arabic("تقرير مركز الرعد الهجومي"), ln=True, align='C')
+        # --- العنوان الرئيسي (باللون الأحمر) ---
+        new_pdf.set_text_color(200, 0, 0) # لون أحمر هجومي
+        new_pdf.set_font('Arabic', '', 22)
+        new_pdf.cell(0, 15, fix_arabic("تقرير مركز الرعد الهجومي"), ln=True, align='C')
+        
+        # خط فاصل تحت العنوان
+        new_pdf.set_draw_color(200, 0, 0)
+        new_pdf.line(10, 30, 200, 30)
         new_pdf.ln(10)
         
+        # التاريخ (رمادي غامق)
+        new_pdf.set_text_color(100, 100, 100)
+        new_pdf.set_font('Arabic', '', 10)
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        new_pdf.cell(0, 10, fix_arabic(f"تاريخ التقرير: {current_time}"), ln=True, align='R')
+        new_pdf.ln(5)
+
         for section_title, section_content in report_data.items():
-            # العناوين الجانبية (مثل: الهدف، نوع العملية)
-            new_pdf.set_font('Arabic', '', 14)
-            new_pdf.cell(0, 10, fix_arabic(f"--- {section_title} ---"), ln=True, align='R')
-            new_pdf.ln(2)
+            # العناوين الجانبية (أحمر داكن)
+            new_pdf.set_text_color(150, 0, 0)
+            new_pdf.set_font('Arabic', '', 15)
+            new_pdf.cell(0, 10, fix_arabic(f"◀ {section_title}"), ln=True, align='R')
             
+            # محتوى القسم (أسود)
+            new_pdf.set_text_color(0, 0, 0)
             new_pdf.set_font('Arabic', '', 11)
             
-            # تنظيف المحتوى من رسائل خطأ السيرفر المتكررة
             if isinstance(section_content, list):
-                # إذا كانت القائمة كلها أخطاء "Operation not permitted"، نختصرها
                 clean_list = [line for line in section_content if "not permitted" not in str(line)]
                 if not clean_list and any("not permitted" in str(l) for l in section_content):
                     content_text = "تنبيه: العملية تتطلب صلاحيات Root (شغل البرنامج محلياً لرؤية النتائج كاملة)."
@@ -212,8 +222,12 @@ class PDFReportGenerator:
             else:
                 content_text = str(section_content)
                 
-            # كتابة النص المعالج
             new_pdf.multi_cell(0, 8, fix_arabic(content_text), align='R')
+            new_pdf.ln(5)
+            
+            # خط خفيف بين الأقسام
+            new_pdf.set_draw_color(230, 230, 230)
+            new_pdf.line(10, new_pdf.get_y(), 200, new_pdf.get_y())
             new_pdf.ln(5)
         
         new_pdf.output(filename)
