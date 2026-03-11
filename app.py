@@ -170,19 +170,18 @@ class PDFReportGenerator:
         self.pdf.multi_cell(0, 10, content, align='R')
         self.pdf.ln(5)
 
-    def generate_report(self, filename="report.pdf", report_data={}):
+        def generate_report(self, filename="report.pdf", report_data={}):
         self.pdf.add_page()
-self.pdf.set_font('Arabic', '', 16)
-self.pdf.cell(0, 10, "تقرير مركز الرعد الهجومي", ln=True, align='C')
-        self.pdf.add_section("تاريخ التقرير:", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-        
+        self.pdf.set_font('Arabic', '', 16)
+        self.pdf.cell(0, 10, "تقرير مركز الرعد الهجومي", ln=True, align='C')
+        self.pdf.set_font('Arabic', '', 12)
+        self.pdf.cell(0, 10, f"تاريخ التقرير: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", ln=True, align='R')
+        self.pdf.ln(10)
+
         for section_title, section_content in report_data.items():
-            if isinstance(section_content, list):
-                content_str = "\n".join(section_content)
-            elif isinstance(section_content, dict):
-                content_str = json.dumps(section_content, indent=2, ensure_ascii=False)
-            else:
-                content_str = str(section_content)
+            self.pdf.set_font('Arabic', '', 14)
+            self.pdf.cell(0, 10, section_title, ln=True, align='R')
+            self.pdf.set_font('Arabic', '', 12)
             self.pdf.add_section(section_title, content_str)
 
         self.pdf.output(filename)
