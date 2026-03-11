@@ -1,4 +1,3 @@
-import streamlit as st
 import pandas as pd
 import os
 import requests
@@ -11,7 +10,7 @@ from gtts import gTTS
 from scapy.all import IP, TCP, send, sr1
 from groq import Groq
 from bs4 import BeautifulSoup
-from fpdf import FPDF
+from fpdf2 import FPDF
 import time
 
 # --- 1. إعدادات الهوية والترسانة ---
