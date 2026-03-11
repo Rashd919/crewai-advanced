@@ -347,6 +347,8 @@ with tabs[1]: # OSINT Tab
                     for key, value in info.items():
                         st.write(f"**{key}:** {value}")
                     hub.send_voice_alert("تم جمع المعلومات الاستخباراتية بنجاح.")
+                   if "report_data" not in st.session_state:
+            st.session_state.report_data = {}
                     st.session_state.report_data["نتائج OSINT"] = info
 
 with tabs[2]: # Dashboard Tab
