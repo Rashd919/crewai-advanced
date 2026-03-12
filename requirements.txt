@@ -24,3 +24,6 @@ Scapy
 arabic-reshaper
 python-bidi
 python-whois
+matplotlib
+networkx
+dnspython
