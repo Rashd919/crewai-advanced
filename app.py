@@ -366,7 +366,11 @@ class ReconModule:
     @staticmethod
     def email_osint(url):
         try:
-            r = requests.get(url, timeout=8)
+requests.get(
+    url,
+    headers={"User-Agent": "Mozilla/5.0"},
+    timeout=8
+)
             return list(set(re.findall(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}", r.text)))
         except:
             return []
@@ -578,14 +582,52 @@ with tabs[4]:
 
 with tabs[5]:
     st.header("📄 وحدة التقارير الاحترافية")
+    
+    # --- 1. تهيئة بيانات التقرير إذا لم تكن موجودة ---
+    if 'report_data' not in st.session_state:
+        st.session_state.report_data = {
+            "summary": "ملخص عام عن الفحص والتهديدات المكتشفة",
+            "vulnerabilities": [
+                {
+                    "name": "اسم الثغرة",
+                    "severity": "High",
+                    "description": "وصف مختصر للثغرة"
+                }
+            ],
+            "attack_surface": ["api.example.com", "dev.example.com"],
+            "recon": {
+                "Subdomains": ["api.example.com", "dev.example.com"],
+                "Open Ports": ["80", "443"]
+            }
+        }
+
+    # --- 2. تجهيز report_data النهائي للإرسال للـ PDF generator ---
+    report_data = {
+        "summary": st.session_state.report_data.get("summary", "تقرير تم إنشاؤه تلقائياً باستخدام Thunder Offensive Hub"),
+        "vulnerabilities": st.session_state.report_data.get("vulnerabilities", []),
+        "attack_surface": list(st.session_state.report_data.get("استخبارات متقدمة", {}).get("Subdomains", [])),
+        "recon": st.session_state.report_data.get("استخبارات متقدمة", {})
+    }
+
+    # --- 3. إدخال اسم التقرير ---
     report_filename = st.text_input("اسم ملف التقرير:", "Thunder_Report")
+
+    # --- 4. زر توليد التقرير ---
     if st.button("توليد تقرير PDF"):
         if st.session_state.get('report_data'):
             with st.spinner("جاري توليد تقرير PDF..."):
-                pdf_file = report_generator.generate_report(f"{report_filename}.pdf", st.session_state.report_data)
-                with open(pdf_file, "rb") as f:
-                    st.download_button(label="تحميل تقرير PDF", data=f.read(), file_name=pdf_file, mime="application/pdf")
-                st.success("تم توليد التقرير بنجاح!")
-                hub.send_voice_alert("تم توليد تقرير PDF بنجاح.")
+                try:
+                    pdf_file = report_generator.generate_report(f"{report_filename}.pdf", report_data)
+                    with open(pdf_file, "rb") as f:
+                        st.download_button(
+                            label="تحميل تقرير PDF",
+                            data=f.read(),
+                            file_name=pdf_file,
+                            mime="application/pdf"
+                        )
+                    st.success("✅ تم توليد التقرير بنجاح!")
+                    hub.send_voice_alert("تم توليد تقرير PDF بنجاح.")
+                except Exception as e:
+                    st.error(f"🚨 فشل توليد التقرير: {e}")
         else:
             st.warning("لا توجد بيانات لتوليد التقرير.")
