@@ -346,7 +346,7 @@ class ReconModule:
                 continue
         return found
 
-       @staticmethod
+   @staticmethod
     def tech_detect(url):
         tech = []
         try:
