@@ -321,15 +321,15 @@ class ReconModule:
         return records
 
     @staticmethod
-    def http_headers_analysis(url):
-        try:
-            r = requests.get(url, timeout=8)
-            h = r.headers
-            needed = ["Content-Security-Policy","X-Frame-Options","X-Content-Type-Options",
-                      "Strict-Transport-Security","Referrer-Policy","Permissions-Policy"]
-            return {k: (h.get(k) or "Missing") for k in needed}
-        except Exception as e:
-            return {"error": str(e)}
+def http_headers_analysis(url):
+    try:
+        r = requests.get(url, timeout=8)
+        h = r.headers
+        needed = ["Content-Security-Policy","X-Frame-Options","X-Content-Type-Options",
+                  "Strict-Transport-Security","Referrer-Policy","Permissions-Policy"]
+        return {k: (h.get(k) or "Missing") for k in needed}
+    except Exception as e:
+        return {"error": str(e)}
 
     @staticmethod
     def dir_scan(url, wordlist=None):
