@@ -22,3 +22,6 @@ edge-tts
 supabase
 google-generativeai
 openpyxl
+matplotlib
+seaborn
+numpy
