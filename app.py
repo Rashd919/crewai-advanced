@@ -367,11 +367,9 @@ class ReconModule:
     @staticmethod
     def email_osint(url):
         try:
-requests.get(
-    url,
-    headers={"User-Agent": "Mozilla/5.0"},
-    timeout=8
-)
+    requests.get(url, timeout=8)
+except Exception as e:
+    return {"error": str(e)}
             return list(set(re.findall(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}", r.text)))
         except:
             return []
