@@ -1,6 +1,5 @@
 password
 123456
-Rashd9199@
 admin
 qwerty
 12345678
