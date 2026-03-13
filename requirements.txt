@@ -28,3 +28,4 @@ numpy
 dnspython
 scapy
 lxml
+networkx
