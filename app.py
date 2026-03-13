@@ -364,15 +364,14 @@ class ReconModule:
             return [] # إرجاع قائمة فارغة في حالة حدوث خطأ
         return list(set(tech)) # إرجاع جميع التقنيات المكتشفة، أو يمكن تحديد عدد معين إذا لزم الأمر
 
-    @staticmethod
+        @staticmethod
     def email_osint(url):
         try:
-            requests.get(url, timeout=8)
-    except Exception as e:
-    return {"error": str(e)}
-            return list(set(re.findall(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}", r.text)))
-        except:
-            return []
+            r = requests.get(url, timeout=8)
+            emails = re.findall(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}", r.text)
+            return list(set(emails))
+        except Exception as e:
+            return {"error": str(e)}
 
     @staticmethod
     def whois_lookup(domain):
