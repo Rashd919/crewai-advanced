@@ -182,55 +182,117 @@ class AIAnalyzer:
             return f"🚨 خلل في تحليل الذكاء الاصطناعي: {str(e)}"
 
 class PDFReportGenerator:
+
     def __init__(self):
         self.font_path = "DejaVuSans.ttf"
 
-    def fix_arabic(self, text):
-        if not text: return ""
-        reshaped_text = arabic_reshaper.reshape(str(text))
-        return get_display(reshaped_text)
+    def generate_report(self, filename, report_data):
 
-    def generate_report(self, filename="report.pdf", report_data={}):
         pdf = FPDF()
-        pdf.add_font('DejaVu', '', self.font_path, uni=True)
+
+        pdf.add_font('DejaVu','',self.font_path,uni=True)
         pdf.add_page()
-        
-        pdf.set_text_color(200, 0, 0)
-        pdf.set_font('DejaVu', '', 22)
-        pdf.cell(0, 15, self.fix_arabic("تقرير مركز الرعد الهجومي"), ln=True, align='C')
-        pdf.set_draw_color(200, 0, 0)
-        pdf.line(10, 30, 200, 30)
-        pdf.ln(10)
-        
-        pdf.set_text_color(100, 100, 100)
-        pdf.set_font('DejaVu', '', 10)
-        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        pdf.cell(0, 10, self.fix_arabic(f"تاريخ التقرير: {current_time}"), ln=True, align='R')
+
+        # عنوان التقرير
+        pdf.set_font("DejaVu","",24)
+        pdf.set_text_color(200,0,0)
+        pdf.cell(0,15,"Cyber Security Assessment Report",ln=True,align="C")
+
         pdf.ln(5)
 
-        for section_title, section_content in report_data.items():
-            pdf.set_text_color(150, 0, 0)
-            pdf.set_font('DejaVu', '', 15)
-            pdf.cell(0, 10, self.fix_arabic(f"◀ {section_title}"), ln=True, align='R')
-            pdf.set_text_color(0, 0, 0)
-            pdf.set_font('DejaVu', '', 11)
-            
-            if isinstance(section_content, list):
-                content_text = "\n".join(map(str, section_content))
-            elif isinstance(section_content, dict):
-                content_text = json.dumps(section_content, indent=2, ensure_ascii=False)
+        pdf.set_font("DejaVu","",12)
+        pdf.set_text_color(0,0,0)
+
+        from datetime import datetime
+        date = datetime.now().strftime("%Y-%m-%d %H:%M")
+
+        pdf.cell(0,10,f"Report Date: {date}",ln=True)
+        pdf.cell(0,10,"Assessment Type: Automated Recon & Security Scan",ln=True)
+
+        pdf.ln(5)
+
+        # Executive Summary
+        pdf.set_font("DejaVu","",16)
+        pdf.set_text_color(150,0,0)
+        pdf.cell(0,10,"Executive Summary",ln=True)
+
+        pdf.set_font("DejaVu","",11)
+        summary = report_data.get("summary","No summary available")
+        pdf.multi_cell(0,8,str(summary))
+
+        pdf.ln(5)
+
+        # Vulnerability Table
+        pdf.set_font("DejaVu","",16)
+        pdf.set_text_color(150,0,0)
+        pdf.cell(0,10,"Vulnerabilities",ln=True)
+
+        pdf.set_font("DejaVu","",11)
+        pdf.set_text_color(0,0,0)
+
+        vulns = report_data.get("vulnerabilities",[])
+
+        for v in vulns:
+
+            name = v.get("name","Unknown")
+            severity = v.get("severity","Low")
+            description = v.get("description","")
+
+            pdf.set_font("DejaVu","",13)
+            pdf.cell(0,8,f"{name} ({severity})",ln=True)
+
+            pdf.set_font("DejaVu","",11)
+            pdf.multi_cell(0,7,description)
+
+            pdf.ln(2)
+
+        pdf.ln(5)
+
+        # Attack Surface
+        pdf.set_font("DejaVu","",16)
+        pdf.set_text_color(150,0,0)
+        pdf.cell(0,10,"Attack Surface",ln=True)
+
+        pdf.set_font("DejaVu","",11)
+
+        attack_surface = report_data.get("attack_surface",[])
+
+        for item in attack_surface:
+            pdf.cell(0,8,f"- {item}",ln=True)
+
+        pdf.ln(5)
+
+        # Recon Results
+        pdf.set_font("DejaVu","",16)
+        pdf.set_text_color(150,0,0)
+        pdf.cell(0,10,"Recon Results",ln=True)
+
+        pdf.set_font("DejaVu","",11)
+        recon = report_data.get("recon",{})
+
+        for k,v in recon.items():
+
+            pdf.set_font("DejaVu","",13)
+            pdf.cell(0,8,str(k),ln=True)
+
+            pdf.set_font("DejaVu","",11)
+
+            if isinstance(v,list):
+                for i in v:
+                    pdf.cell(0,7,f"- {i}",ln=True)
+
             else:
-                content_text = str(section_content)
-                
-            pdf.multi_cell(0, 8, self.fix_arabic(content_text), align='R')
-            pdf.ln(5)
-            pdf.set_draw_color(230, 230, 230)
-            pdf.line(10, pdf.get_y(), 200, pdf.get_y())
-            pdf.ln(5)
-        
+                pdf.multi_cell(0,7,str(v))
+
+            pdf.ln(2)
+
         pdf.output(filename)
+
         return filename
 
+        return filename
+
+        return filename
 # --- إضافات وحدة الاستخبارات المتقدمة ---
 class ReconModule:
     @staticmethod
