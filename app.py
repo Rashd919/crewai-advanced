@@ -183,7 +183,7 @@ class AIAnalyzer:
 
 class PDFReportGenerator:
     def __init__(self):
-        self.font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+        self.font_path = "DejaVuSans.ttf"
 
     def fix_arabic(self, text):
         if not text: return ""
@@ -192,28 +192,28 @@ class PDFReportGenerator:
 
     def generate_report(self, filename="report.pdf", report_data={}):
         pdf = FPDF()
-        pdf.add_font('Arabic', '', self.font_path)
+        pdf.add_font('DejaVu', '', self.font_path, uni=True)
         pdf.add_page()
         
         pdf.set_text_color(200, 0, 0)
-        pdf.set_font('Arabic', '', 22)
+        pdf.set_font('DejaVu', '', 22)
         pdf.cell(0, 15, self.fix_arabic("تقرير مركز الرعد الهجومي"), ln=True, align='C')
         pdf.set_draw_color(200, 0, 0)
         pdf.line(10, 30, 200, 30)
         pdf.ln(10)
         
         pdf.set_text_color(100, 100, 100)
-        pdf.set_font('Arabic', '', 10)
+        pdf.set_font('DejaVu', '', 10)
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         pdf.cell(0, 10, self.fix_arabic(f"تاريخ التقرير: {current_time}"), ln=True, align='R')
         pdf.ln(5)
 
         for section_title, section_content in report_data.items():
             pdf.set_text_color(150, 0, 0)
-            pdf.set_font('Arabic', '', 15)
+            pdf.set_font('DejaVu', '', 15)
             pdf.cell(0, 10, self.fix_arabic(f"◀ {section_title}"), ln=True, align='R')
             pdf.set_text_color(0, 0, 0)
-            pdf.set_font('Arabic', '', 11)
+            pdf.set_font('DejaVu', '', 11)
             
             if isinstance(section_content, list):
                 content_text = "\n".join(map(str, section_content))
@@ -236,7 +236,7 @@ class ReconModule:
     @staticmethod
     def subdomain_brute(domain, wordlist=None):
         subs = wordlist or ["www","mail","dev","test","portal","admin","api","beta","stage","m"]
-        found = {}
+        found[host] = ip
         for s in subs:
             host = f"{s}.{domain}"
             try:
@@ -277,7 +277,7 @@ class ReconModule:
             try:
                 u = url.rstrip("/") + "/" + p
                 r = requests.get(u, timeout=4)
-                if r.status_code < 400:
+                if r.status_code in [200,301,302,403]:
                     found.append((p, r.status_code))
             except:
                 continue
