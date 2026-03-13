@@ -295,9 +295,11 @@ class ReconModule:
             if "django" in txt: tech.append("Django")
             if "react" in txt or "next.js" in txt: tech.append("React/Next")
             if "jquery" in txt: tech.append("jQuery")
-        except:
-            pass
-        return list(set(tech)[:7])
+        except Exception as e:
+            # يمكن هنا تسجيل الخطأ أو إرجاع رسالة خطأ مناسبة
+            # st.error(f"خطأ في tech_detect: {e}") # لا يمكن استخدام st.error هنا لأنها دالة ثابتة
+            return [] # إرجاع قائمة فارغة في حالة حدوث خطأ
+        return list(set(tech)) # إرجاع جميع التقنيات المكتشفة، أو يمكن تحديد عدد معين إذا لزم الأمر
 
     @staticmethod
     def email_osint(url):
