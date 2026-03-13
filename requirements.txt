@@ -25,4 +25,6 @@ openpyxl
 matplotlib
 seaborn
 numpy
-networkx
+dnspython
+scapy
+lxml
