@@ -31,4 +31,8 @@ lxml
 networkx
 subs
 install
-pip
+install 
+Pillow 
+validators 
+python-whois 
+shodan
