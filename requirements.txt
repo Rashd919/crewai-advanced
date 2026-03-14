@@ -30,3 +30,5 @@ scapy
 lxml
 networkx
 subs
+install
+pip
